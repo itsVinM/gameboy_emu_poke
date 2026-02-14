@@ -8,6 +8,8 @@ use cpu::Cpu;
 use mmu::Mmu;
 use ppu::Ppu;
 
+
+
 fn main() {
     let rom = std::fs::read("rom.gb").expect("rom.gb not found");
     let extram = std::fs::read("rom.sav").unwrap_or(vec![0u8; 0x8000]);

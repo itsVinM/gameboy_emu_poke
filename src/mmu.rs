@@ -9,6 +9,8 @@ pub struct Mmu {
     pub io:       [u8; 0x80],
     hram:         [u8; 0x7F],
     pub ie:       u8,
+    pub buttons: u8, // face buttons: Start | Select | B | A (active-low, 0=pressed)
+    pub dpad: u8,   // directions: Down | Up | Left | Right 
 }
 
 impl Mmu {
@@ -24,6 +26,8 @@ impl Mmu {
             io:          [0; 0x80],
             hram:        [0; 0x7F],
             ie:          0,
+            buttons: 0x0F,
+            dpad: 0x0F,     // nothing pressed
         };
         // Boot state
         mmu.io[0x40] = 0x91; // LCDC
@@ -38,6 +42,16 @@ impl Mmu {
                 let offset = self.rom_bank * 0x4000 + (addr as usize - 0x4000);
                 *self.rom.get(offset).unwrap_or(&0xFF)
             }
+            0xFF00 => {
+                let select = self.io[0];
+                if select & 0x10 == 0 {       // bit 4 low -> game wants D-pad
+                    0xC0 | 0x10 | self.dpad  // bit 7-5 always 1, but 4 =0
+                } else if select & 0x20 == 0 {//bit 5 low -> game wants buttons
+                    0xC0 | 0x20 | self.buttons
+                } else {
+                    0xFF // nothing selected
+                }
+            }
             0x8000..=0x9FFF => self.vram[addr as usize - 0x8000],
             0xA000..=0xBFFF => {
                 let offset = self.extram_bank * 0x2000 + (addr as usize - 0xA000);
@@ -50,7 +64,7 @@ impl Mmu {
             0xFF00..=0xFF7F => self.io_read(addr),
             0xFF80..=0xFFFE => self.hram[addr as usize - 0xFF80],
             0xFFFF          => self.ie,
-            _               => 0xFF,
+            
         }
     }
 
