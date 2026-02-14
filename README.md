@@ -1,8 +1,8 @@
 rkdown
 
-# GB.RS — Game Boy Emulator
-
-A high-performance Game Boy emulator written in Rust.
+# Simple Game Boy Emulator
+A Game Boy emulator only for pokemon blue or red written in Rust.
+💡 Idea from the pokemongb 
 
 
 > ### 🖥️ [First emulator working]
