@@ -1,6 +1,6 @@
 pub struct Mmu {
     rom:          Vec<u8>,
-    rom_bank:     usize,
+    pub rom_bank:     usize,
     pub vram:     [u8; 0x2000],
     pub extram:   Vec<u8>,
     extram_bank:  usize,
@@ -39,9 +39,8 @@ impl Mmu {
         match addr {
             0x0000..=0x3FFF => self.rom[addr as usize],
             0x4000..=0x7FFF => {
-                let offset = self.rom_bank * 0x4000 + (addr as usize - 0x4000);
-                *self.rom.get(offset).unwrap_or(&0xFF)
-            }
+                self.rom[self.rom_bank * 0x4000 + (addr as usize - 0x4000)]
+            },
             0xFF00 => {
                 let select = self.io[0];
                 if select & 0x10 == 0 {       // bit 4 low -> game wants D-pad
@@ -51,12 +50,12 @@ impl Mmu {
                 } else {
                     0xFF // nothing selected
                 }
-            }
+            },
             0x8000..=0x9FFF => self.vram[addr as usize - 0x8000],
             0xA000..=0xBFFF => {
                 let offset = self.extram_bank * 0x2000 + (addr as usize - 0xA000);
                 *self.extram.get(offset).unwrap_or(&0xFF)
-            }
+            },
             0xC000..=0xDFFF => self.wram[addr as usize - 0xC000],
             0xE000..=0xFDFF => self.wram[addr as usize - 0xE000],
             0xFE00..=0xFE9F => self.oam[addr as usize - 0xFE00],
