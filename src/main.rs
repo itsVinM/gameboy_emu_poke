@@ -1,110 +1,95 @@
+use minifb::{Key, Window, WindowOptions};
+
 mod cpu;
 mod mmu;
-mod registers;
 mod ppu;
 
-use cpu::CPU; 
-use mmu::{MainBus, Bus};
-use ppu::PPU;
-use eframe::egui;
+use cpu::Cpu;
+use mmu::Mmu;
+use ppu::Ppu;
 
-struct GBApp{
-    cpu: CPU<MainBus>,
-    ppu: PPU,
-    last_ly: u8,
-}
+fn main() {
+    let rom = std::fs::read("rom.gb").expect("rom.gb not found");
+    let extram = std::fs::read("rom.sav").unwrap_or(vec![0u8; 0x8000]);
 
-impl GBApp{
-    fn new(rom_data: Vec<u8>) -> Self {
-        let bus = MainBus::new(rom_data);
-        let cpu = CPU::new(bus);
-        let ppu = PPU::new();
+    let mut mmu = Mmu::new(rom, extram);
+    let mut cpu = Cpu::new();
+    let mut ppu = Ppu::new();
 
-        Self {
-            cpu,
-            ppu,
-            last_ly: 255,
-        }
-    }
-}
-
-impl eframe::App for GBApp{
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame){
-        // run engine for 1 frame - 70224 cycles
-        let mut frame_cycles = 0;
-        let joyp = self.cpu.bus.read(0xFF00);
-        let mut buttons = 0x0f; // 1 means not pressed
-
-        ctx.input(|i|{
-            // Bit 4 low = Directions
-            if (joyp & 0x10) == 0 {
-                if i.key_down(egui::Key::D)  {buttons &= !0x01;} // right
-                if i.key_down(egui::Key::A)  {buttons &= !0x02;} // left
-                if i.key_down(egui::Key::W)  {buttons &= !0x04;} // up
-                if i.key_down(egui::Key::S)  {buttons &= !0x08;} // down
-            }
-
-            // Bit 5 low = Actions
-            if (joyp & 0x20) == 0 {
-                if i.key_down(egui::Key::Z) {buttons &= !0x01;} // A
-                if i.key_down(egui::Key::X) {buttons &= !0x02;} // B
-                if i.key_down(egui::Key::Space) {buttons &= !0x04;} // Select
-                if i.key_down(egui::Key::Enter) {buttons &= !0x08;} // Start
-            }
-        });
-
-        self.cpu.bus.write(0xFF00, (joyp & 0xF0) | buttons);
-
-
-        while frame_cycles < 70224 {
-            let d = if !self.cpu.halt {
-                self.cpu.step()
-            } else {
-                self.cpu.tick();
-                4
-            };
-
-            frame_cycles += d;
-            let current_ly = self.cpu.bus.read(0xFF44);
-            if current_ly < 144 && current_ly != self.last_ly {
-                self.ppu.render_scanline(current_ly, &mut self.cpu.bus);
-                self.last_ly = current_ly;
-            }
-
-    
-            if current_ly == 153 { self.last_ly = 255; } // Reset at end of frame
-        }
-        // RENDER GUI
-        egui::CentralPanel::default().show(ctx, |ui|{
-            let pixels: Vec<u8> = self.ppu.frame.iter().flat_map(|&c| match c {
-            0 => [224, 248, 208, 255], 
-            1 => [136, 192, 112, 255],
-            2 => [52, 104, 86, 255],  
-            _ => [8, 24, 32, 255],
-        }).collect();
-        let screen_size = egui::vec2(160.0, 144.0) * 4.0;
-        let texture = ctx.load_texture(
-                "gb_screen", 
-                egui::ColorImage::from_rgba_unmultiplied([160, 144], &pixels), 
-                egui::TextureOptions::NEAREST
-            );
-        ui.image(egui::load::SizedTexture::new(texture.id(), screen_size));
-        });
-        ctx.request_repaint();
-    }
-}
-
-fn main() -> eframe::Result<()> {
-
-    let rom_path = "pokemon_red.gb";
-    let rom_data = std::fs::read(rom_path).expect("Failed to read ROM file");
-
-    let options = eframe::NativeOptions::default();
-    eframe::run_native(
-        "GB", 
-        options,
-        Box::new(|_| Ok(Box::new(GBApp::new(rom_data))))
+    let scale = 3;
+    let mut window = Window::new(
+        "Game Boy",
+        160 * scale,
+        144 * scale,
+        WindowOptions::default(),
     )
-   
+    .expect("Failed to create window");
+
+    window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
+
+    let mut fb: Vec<u32> = vec![0u32; 160 * scale * 144 * scale];
+
+    while window.is_open() && !window.is_key_down(Key::Escape) {
+        update_joypad(&window, &mut mmu);
+
+        let mut frame_cycles = 0u32;
+        while frame_cycles < 70224 {
+            let cycles = cpu.step(&mut mmu);
+            ppu.tick(cycles, &mut mmu);
+            frame_cycles += cycles;
+        }
+
+        scale_frame(&ppu.framebuffer, &mut fb, scale);
+
+        window
+            .update_with_buffer(&fb, 160 * scale, 144 * scale)
+            .unwrap();
+
+        std::fs::write("rom.sav", &mmu.extram).ok();
+    }
 }
 
+fn scale_frame(src: &[u8], dst: &mut Vec<u32>, scale: usize) {
+    for y in 0..144usize {
+        for x in 0..160usize {
+            let i = (y * 160 + x) * 4;
+            let r = src[i]     as u32;
+            let g = src[i + 1] as u32;
+            let b = src[i + 2] as u32;
+            let pixel: u32 = (r << 16) | (g << 8) | b;
+            for dy in 0..scale {
+                for dx in 0..scale {
+                    dst[(y * scale + dy) * 160 * scale + (x * scale + dx)] = pixel;
+                }
+            }
+        }
+    }
+}
+
+fn update_joypad(window: &Window, mmu: &mut Mmu) {
+    let joyp = mmu.io[0x00];
+
+    let dirs: u8 = !(
+        (window.is_key_down(Key::Down)  as u8) << 3 |
+        (window.is_key_down(Key::Up)    as u8) << 2 |
+        (window.is_key_down(Key::Left)  as u8) << 1 |
+        (window.is_key_down(Key::Right) as u8)
+    ) & 0x0F;
+
+    let btns: u8 = !(
+        (window.is_key_down(Key::Enter) as u8) << 3 |
+        (window.is_key_down(Key::Space) as u8) << 2 |
+        (window.is_key_down(Key::Z)     as u8) << 1 |
+        (window.is_key_down(Key::X)     as u8)
+    ) & 0x0F;
+
+    let low = if joyp & 0x10 == 0 {
+        dirs
+    } else if joyp & 0x20 == 0 {
+        btns
+    } else {
+        0x0F
+    };
+
+    mmu.io[0x00] = (joyp & 0x30) | low | 0xC0;
+}

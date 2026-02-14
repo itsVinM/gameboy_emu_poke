@@ -1,102 +1,103 @@
-// src/mmu.rs
-
-pub trait Bus {
-    fn read(&self, addr: u16) -> u8;
-    fn write(&mut self, addr: u16, val: u8);
+pub struct Mmu {
+    rom:          Vec<u8>,
+    rom_bank:     usize,
+    pub vram:     [u8; 0x2000],
+    pub extram:   Vec<u8>,
+    extram_bank:  usize,
+    wram:         [u8; 0x4000],
+    pub oam:      [u8; 0xA0],
+    pub io:       [u8; 0x80],
+    hram:         [u8; 0x7F],
+    pub ie:       u8,
 }
 
-pub struct MainBus{
-    pub rom: Vec<u8>,       // Heap allocated (game)
-    pub joypad_state: u8,   // 0xFF00
-    pub vram: [u8; 8192],   // Stack/static allocated - graphics
-    pub wram: [u8; 8192],   // work RAM
-    pub oam:  [u8; 160],
-    pub hram: [u8; 128],    // "high RAM" - internal to CPU
-    pub io:   [u8; 128],    // hw registers - buttons/sound
-    pub ie_reg: u8,
-}
+impl Mmu {
+    pub fn new(rom: Vec<u8>, extram: Vec<u8>) -> Self {
+        let mut mmu = Self {
+            rom,
+            rom_bank:    1,
+            vram:        [0; 0x2000],
+            extram,
+            extram_bank: 0,
+            wram:        [0; 0x4000],
+            oam:         [0; 0xA0],
+            io:          [0; 0x80],
+            hram:        [0; 0x7F],
+            ie:          0,
+        };
+        // Boot state
+        mmu.io[0x40] = 0x91; // LCDC
+        mmu.io[0x47] = 0xFC; // BGP
+        mmu
+    }
 
-impl MainBus {
-    pub fn new(rom_data: Vec<u8>) -> Self{
-        
-        Self{
-            rom:  rom_data,
-            joypad_state: 0xFF,
-            vram: [0; 8192],
-            wram: [0; 8192],
-            oam:  [0; 160],
-            hram: [0; 128],
-            io:   [0; 128],
-            ie_reg: 0,
-        }
-    } 
-}
-
-impl Bus for MainBus{
-    
-    fn read(&self, addr: u16) -> u8{
-
+    pub fn read(&self, addr: u16) -> u8 {
         match addr {
-            0x0000..=0x7FFF => self.rom[addr as usize],
-            0x8000..=0x9FFF => self.vram[(addr - 0x8000) as usize],
-            
-            // Combine WRAM and Echo RAM into one logic block
-            // 0xC000 & 0x1FFF = 0x0000
-            // 0xE000 & 0x1FFF = 0x0000
-            0xC000..=0xFDFF => self.wram[(addr & 0x1FFF) as usize],
-            
-            0xFE00..=0xFE9F => self.oam[(addr - 0xFE00) as usize],
-            0xFF00          => self.joypad_state,
-            0xFF01..=0xFF7F => self.io[(addr - 0xFF00) as usize],
-            0xFF80..=0xFFFE => self.hram[(addr - 0xFF80) as usize],
-            0xFFFF          => self.ie_reg,
+            0x0000..=0x3FFF => self.rom[addr as usize],
+            0x4000..=0x7FFF => {
+                let offset = self.rom_bank * 0x4000 + (addr as usize - 0x4000);
+                *self.rom.get(offset).unwrap_or(&0xFF)
+            }
+            0x8000..=0x9FFF => self.vram[addr as usize - 0x8000],
+            0xA000..=0xBFFF => {
+                let offset = self.extram_bank * 0x2000 + (addr as usize - 0xA000);
+                *self.extram.get(offset).unwrap_or(&0xFF)
+            }
+            0xC000..=0xDFFF => self.wram[addr as usize - 0xC000],
+            0xE000..=0xFDFF => self.wram[addr as usize - 0xE000],
+            0xFE00..=0xFE9F => self.oam[addr as usize - 0xFE00],
+            0xFEA0..=0xFEFF => 0xFF,
+            0xFF00..=0xFF7F => self.io_read(addr),
+            0xFF80..=0xFFFE => self.hram[addr as usize - 0xFF80],
+            0xFFFF          => self.ie,
             _               => 0xFF,
         }
     }
 
-    fn write(&mut self, addr: u16, val: u8){
+    pub fn write(&mut self, addr: u16, val: u8) {
         match addr {
-            0x0000..=0x7FFF => {},
-            // VRAM
-            0x8000..=0x9FFF => self.vram[(addr - 0x8000) as usize] = val,
-
-            // Work RAM & Echo RAM (0xC000 - 0xFDFF)
-            // Using & 0x1FFF maps both ranges to 0..8191
-            0xC000..=0xFDFF => self.wram[(addr & 0x1FFF) as usize] = val,
-
-            // OAM
-            0xFE00..=0xFE9F => self.oam[(addr - 0xFE00) as usize] = val,
-
-            // Joypad
-            0xFF00 => {
-                let current = self.io[0];
-                self.io[0] = (val & 0x30) | (current & 0xCF);
-            },
-
-            // DMA Transfer
-            0xFF46 => {
-                self.io[0x46] = val; // Store the source high-byte
-                let source_base = (val as u16) << 8;
-                for i in 0..160 {
-                    // We use self.read to ensure we handle ROM/WRAM/Echo sources correctly
-                    let byte = self.read(source_base + i);
-                    self.oam[i as usize] = byte;
+            // MBC3 ROM bank select
+            0x2000..=0x3FFF => {
+                self.rom_bank = if val == 0 { 1 } else { (val & 0x7F) as usize };
+            }
+            // MBC3 RAM bank select
+            0x4000..=0x5FFF => {
+                if val <= 3 { self.extram_bank = val as usize; }
+            }
+            0x8000..=0x9FFF => self.vram[addr as usize - 0x8000] = val,
+            0xA000..=0xBFFF => {
+                let offset = self.extram_bank * 0x2000 + (addr as usize - 0xA000);
+                if offset < self.extram.len() {
+                    self.extram[offset] = val;
                 }
-            },
-
-            // Other I/O
-            0xFF01..=0xFF7F => self.io[(addr - 0xFF00) as usize] = val,
-
-            // High RAM
-            0xFF80..=0xFFFE => self.hram[(addr - 0xFF80) as usize] = val,
-
-            // Interrupt Enable
-            0xFFFF => self.ie_reg = val,
-
-    
-            _ => {} // ROM read-only
+            }
+            0xC000..=0xDFFF => self.wram[addr as usize - 0xC000] = val,
+            0xE000..=0xFDFF => self.wram[addr as usize - 0xE000] = val,
+            0xFE00..=0xFE9F => self.oam[addr as usize - 0xFE00] = val,
+            0xFF00..=0xFF7F => self.io_write(addr, val),
+            0xFF80..=0xFFFE => self.hram[addr as usize - 0xFF80] = val,
+            0xFFFF          => self.ie = val,
+            _               => {}
         }
     }
 
+    fn io_read(&self, addr: u16) -> u8 {
+        self.io[addr as usize - 0xFF00]
+    }
 
+    fn io_write(&mut self, addr: u16, val: u8) {
+        let i = addr as usize - 0xFF00;
+        match addr {
+            // DMA transfer to OAM
+            0xFF46 => {
+                let src = (val as u16) << 8;
+                for j in 0..0xA0u16 {
+                    self.oam[j as usize] = self.read(src + j);
+                }
+            }
+            // DIV resets to 0 on any write
+            0xFF04 => self.io[i] = 0,
+            _      => self.io[i] = val,
+        }
+    }
 }
