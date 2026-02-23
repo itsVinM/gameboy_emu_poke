@@ -1,9 +1,11 @@
-rkdown
 
-# Simple Game Boy Emulator
-A Game Boy emulator only for pokemon blue or red written in Rust.
-💡 Idea from the pokemongb 
+# Gameboy Emulator
 
+Cycle-accurate LR35902 CPU emulator in Rust. Personal project to understand 
+bit-level hardware emulation, timing synchronization, and memory-mapped I/O - 
+concepts.
+
+Boots Pokemon Red/Blue.
 
 > ### 🖥️ [First emulator working]
 <p align="center">
