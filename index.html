@@ -1,131 +1,270 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>PokéGB</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🦀 Rust Gameboy LR35902 Runtime</title>
     <style>
-        body { background: #121212; color: #fff; text-align: center; font-family: sans-serif; }
-        canvas { 
-            width: 640px; height: 576px; 
-            image-rendering: pixelated; 
-            border: 5px solid #333; 
-            margin-top: 20px;
+        :root {
+            --bg-color: #f4f7f6;
+            --glass-bg: rgba(255, 255, 255, 0.85);
+            --lcd-bg: #1a1a1d; 
+            --accent: #f9612e;
+            --accent-glow: rgba(249, 97, 46, 0.3);
+            --text-main: #1d1d1f;
+            --text-muted: #86868b;
         }
-        .ui { margin-top: 20px; }
+
+        body { 
+            background: radial-gradient(circle at top left, #ffffff, #e2e8f0);
+            color: var(--text-main); 
+            display: flex;
+            min-height: 100vh;
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .console-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(25px) saturate(180%);
+            -webkit-backdrop-filter: blur(25px) saturate(180%);
+            padding: 24px;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 15px 35px -12px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 340px;
+        }
+
+        h1 { 
+            font-size: 1rem;
+            font-weight: 800; 
+            margin: 0 0 4px 0; 
+            letter-spacing: -0.5px;
+            text-transform: uppercase;
+            font-style: italic;
+            background: linear-gradient(to right, #1d1d1f, var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        #status { 
+            font-size: 8px;
+            font-weight: 800;
+            color: var(--accent);
+            margin-bottom: 16px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+        .screen-container {
+            background: #000;
+            padding: 4px;
+            border-radius: 12px;
+            box-shadow: 0 0 0 1px #fff, 0 10px 25px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+            display: inline-block;
+        }
+
+        canvas { 
+            width: 320px; 
+            height: 288px; 
+            image-rendering: pixelated; 
+            background: var(--lcd-bg);
+            display: block;
+            border-radius: 8px;
+        }
+
+        .legend {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 20px;
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-align: left;
+            background: rgba(0,0,0,0.03);
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .legend b { color: var(--text-main); }
+        .legend span { border-left: 1.5px solid var(--accent); padding-left: 6px; }
+
+        .button-group { display: flex; gap: 8px; justify-content: center; }
+
+        button {
+            background: #1d1d1f;
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 10px;
+            text-transform: uppercase;
+            transition: all 0.2s ease;
+        }
+
+        button:hover { background: var(--accent); transform: translateY(-1px); }
+        .btn-sec { background: transparent; color: var(--text-main); border: 1px solid #d1d1d6; }
         .hidden { display: none; }
-        #status { color: #ffcb05; margin-bottom: 10px; }
     </style>
 </head>
 <body>
-    <h1>PokéGB WASM</h1>
-    <div id="status">Waiting for ROM...</div>
-    <canvas id="screen" width="160" height="144"></canvas>
 
-    <div class="ui">
-        <input type="file" id="loader" class="hidden" accept=".gb">
-        <button id="upload-btn">Load ROM (.gb)</button>
-        <button id="clear-btn">Clear Stored ROM</button>
+    <div class="console-card">
+        <h1>🦀 Rust Gameboy LR35902 Runtime</h1>
+        <div id="status">Hardware Standby</div>
+        
+        <div class="screen-container">
+            <canvas id="screen" width="160" height="144"></canvas>
+        </div>
+
+        <div class="legend">
+            <span>DPAD: <b>Arrows</b></span>
+            <span>A / B: <b>A / B Keys</b></span>
+            <span>START: <b>Enter</b></span>
+            <span>SELECT/SAVE: <b>S Key</b></span>
+        </div>
+
+        <div class="button-group">
+            <input type="file" id="rom-upload" class="hidden" accept=".gb">
+            <button onclick="document.getElementById('rom-upload').click()">Load ROM</button>
+            
+            <input type="file" id="sav-upload" class="hidden" accept=".sav">
+            <button class="btn-sec" onclick="document.getElementById('sav-upload').click()">Import .sav</button>
+
+            <button class="btn-sec" onclick="clearStorage()">Reset</button>
+        </div>
     </div>
 
-   <script type="module">
-    import init, { EmulatorState } from './pkg/pokegameboy.js';
+    <script type="module">
+        import init, { EmulatorState } from './pkg/pokegameboy.js';
 
-    let emu, wasm_mem;
-    let dpad = 0x0F;    // All bits 1 (released)
-    let buttons = 0x0F; // All bits 1 (released)
-    const status = document.getElementById('status');
+        let emu, wasm_mem;
+        let dpad = 0x0F;    
+        let buttons = 0x0F; 
+        const statusEl = document.getElementById('status');
 
-    async function setup() {
-        try {
-            // Explicitly point to the JS glue. 
-            // The browser will look for pokegameboy_bg.wasm automatically.
-            const wasm = await init();
-            wasm_mem = wasm.memory;
-            console.log("WASM Initialized successfully");
+        async function setup() {
+            try {
+                const wasm = await init();
+                wasm_mem = wasm.memory;
+                
+                const savedRom = localStorage.getItem('stored_rom');
+                if (savedRom) {
+                    statusEl.innerText = "System Ready: Resuming...";
+                    startEmulator(new Uint8Array(JSON.parse(savedRom)));
+                } else {
+                    statusEl.innerText = "Waiting for Cartridge";
+                }
+            } catch (err) {
+                statusEl.innerText = "Runtime Initialization Error";
+                console.error(err);
+            }
+        }
+
+        function startEmulator(bytes) {
+            try {
+                emu = new EmulatorState(bytes);
+                statusEl.innerText = "Live";
+                const ctx = document.getElementById('screen').getContext('2d');
+                
+                function frame() {
+                    emu.tick_frame();
+                    const ptr = emu.framebuffer_ptr();
+                    const pixels = new Uint8ClampedArray(wasm_mem.buffer, ptr, 160 * 144 * 4);
+                    ctx.putImageData(new ImageData(pixels, 160, 144), 0, 0);
+                    requestAnimationFrame(frame);
+                }
+                requestAnimationFrame(frame);
+            } catch (err) {
+                statusEl.innerText = "Hardware Fault";
+                console.error(err);
+            }
+        }
+
+        // --- Keyboard Mapping (1:1 with your Rust cfg logic) ---
+        const keyMap = {
+            "arrowdown":  { type: "d", bit: 0x08 },
+            "arrowup":    { type: "d", bit: 0x04 },
+            "arrowleft":  { type: "d", bit: 0x02 },
+            "arrowright": { type: "d", bit: 0x01 },
+            "enter":      { type: "b", bit: 0x08 }, // Start
+            "s":          { type: "b", bit: 0x04 }, // Select
+            "b":          { type: "b", bit: 0x02 }, // B
+            "a":          { type: "b", bit: 0x01 }  // A
+        };
+
+        function handleInput(e, isDown) {
+            const key = e.key.toLowerCase();
+            const config = keyMap[key];
+            if (!config) return;
+
+            e.preventDefault();
             
-            const savedRom = localStorage.getItem('stored_rom');
-            if (savedRom) {
-                status.innerText = "Auto-loading saved ROM...";
-                startWithBytes(new Uint8Array(JSON.parse(savedRom)));
+            if (config.type === "d") {
+                isDown ? dpad &= ~config.bit : dpad |= config.bit;
             } else {
-                status.innerText = "Ready. Please upload a ROM.";
+                isDown ? buttons &= ~config.bit : buttons |= config.bit;
             }
-        } catch (err) {
-            status.innerText = "FATAL: WASM failed to load.";
-            console.error(err);
-        }
-    }
 
-    function startWithBytes(bytes) {
-        try {
-            emu = new EmulatorState(bytes);
-            status.innerText = "RUNNING";
-            
-            const canvas = document.getElementById('screen');
-            const ctx = canvas.getContext('2d');
-            
-            function loop() {
-                emu.tick_frame();
-                const ptr = emu.framebuffer_ptr();
-                // 160 * 144 * 4 bytes for RGBA
-                const pixels = new Uint8ClampedArray(wasm_mem.buffer, ptr, 92160);
-                ctx.putImageData(new ImageData(pixels, 160, 144), 0, 0);
-                requestAnimationFrame(loop);
+            if (emu) {
+                emu.update_joypad(dpad, buttons);
+                
+                // Pressing 'S' (Select) triggers the SRAM save download
+                if (key === 's' && isDown) {
+                    const saveBytes = emu.save_wasm();
+                    if (saveBytes.length > 0) saveToFile(saveBytes);
+                }
             }
-            requestAnimationFrame(loop);
-        } catch (err) {
-            status.innerText = "Error initializing Emulator.";
-            console.error(err);
         }
-    }
 
-    // --- INPUT HANDLING ---
-    const keyMap = {
-        "arrowdown": "d08", "arrowup": "d04", "arrowleft": "d02", "arrowright": "d01",
-        "enter": "b08", "s": "b04", "x": "b02", "z": "b01"
-    };
-
-    function handleKey(e, isDown) {
-        const action = keyMap[e.key.toLowerCase()];
-        if (!action) return;
-        
-        e.preventDefault();
-        const bit = parseInt(action.substring(1), 16);
-        if (action.startsWith("d")) {
-            isDown ? dpad &= ~bit : dpad |= bit;
-        } else {
-            isDown ? buttons &= ~bit : buttons |= bit;
+        function saveToFile(data) {
+            const blob = new Blob([new Uint8Array(data)], { type: 'application/octet-stream' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'game_progress.sav';
+            link.click();
+            URL.revokeObjectURL(url);
+            statusEl.innerText = "SRAM Snapshot Exported";
+            setTimeout(() => statusEl.innerText = "Live", 1500);
         }
-        
-        if (emu) emu.update_joypad(dpad, buttons);
-    }
 
-    window.addEventListener("keydown", (e) => handleKey(e, true));
-    window.addEventListener("keyup", (e) => handleKey(e, false));
+        window.addEventListener("keydown", (e) => handleInput(e, true));
+        window.addEventListener("keyup", (e) => handleInput(e, false));
 
-    // Handle Manual Upload
-    document.getElementById('upload-btn').onclick = () => document.getElementById('loader').click();
-    document.getElementById('loader').onchange = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        
-        const buffer = await file.arrayBuffer();
-        const bytes = new Uint8Array(buffer);
-        
-        try {
+        document.getElementById('rom-upload').onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const bytes = new Uint8Array(await file.arrayBuffer());
             localStorage.setItem('stored_rom', JSON.stringify(Array.from(bytes)));
-            console.log("ROM saved to storage");
-        } catch(e) { 
-            console.warn("Storage full, ROM not cached."); 
-        }
-        
-        startWithBytes(bytes);
-    };
+            startEmulator(bytes);
+        };
 
-    document.getElementById('clear-btn').onclick = () => {
-        localStorage.removeItem('stored_rom');
-        location.reload();
-    };
+        document.getElementById('sav-upload').onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file || !emu) return;
+            const bytes = new Uint8Array(await file.arrayBuffer());
+            emu.load_save_wasm(bytes);
+            statusEl.innerText = "SRAM Data Injected";
+            setTimeout(() => statusEl.innerText = "Live", 1500);
+        };
 
-    setup();
-</script>
+        window.clearStorage = () => {
+            localStorage.removeItem('stored_rom');
+            location.reload();
+        };
+
+        setup();
+    </script>
+</body>
+</html>

@@ -109,18 +109,20 @@ fn render_frame(fb: &mut [u32], ppu: &Ppu, w: usize, h: usize, sc: usize) {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn update_joypad(w: &Window, m: &mut Mmu) {
-    let mut d = 0x0F;
-    let mut b = 0x0F;
+    let mut d = 0x0F; // D-pad: Down, Up, Left, Right
+    let mut b = 0x0F; // Buttons: Start, Select, B, A
 
+    // D-Pad mapping
     if w.is_key_down(Key::Down)  { d &= !0x08; }
     if w.is_key_down(Key::Up)    { d &= !0x04; }
     if w.is_key_down(Key::Left)  { d &= !0x02; }
     if w.is_key_down(Key::Right) { d &= !0x01; }
     
-    if w.is_key_down(Key::Enter) { b &= !0x08; } 
-    if w.is_key_down(Key::S)     { b &= !0x04; } 
-    if w.is_key_down(Key::X)     { b &= !0x02; } // Map X to B
-    if w.is_key_down(Key::Z)     { b &= !0x01; } // Map Z to A
+    // Face button mappign
+    if w.is_key_down(Key::Enter) { b &= !0x08; } // Start 
+    if w.is_key_down(Key::S)     { b &= !0x04; } // Select
+    if w.is_key_down(Key::B)     { b &= !0x02; } // Map B
+    if w.is_key_down(Key::A)     { b &= !0x01; } // Map A
 
     let select = m.io[0x00] & 0x30;
     let mut current_joyp = 0x0F;
