@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>PokéGB | Persistent Build</title>
+    <title>PokéGB</title>
     <style>
         body { background: #121212; color: #fff; text-align: center; font-family: sans-serif; }
         canvas { 
@@ -27,60 +27,105 @@
         <button id="clear-btn">Clear Stored ROM</button>
     </div>
 
-    <script type="module">
-        import init, { EmulatorState } from './pkg/pokegameboy.js';
+   <script type="module">
+    import init, { EmulatorState } from './pkg/pokegameboy.js';
 
-        let emu, wasm_mem;
-        const status = document.getElementById('status');
+    let emu, wasm_mem;
+    let dpad = 0x0F;    // All bits 1 (released)
+    let buttons = 0x0F; // All bits 1 (released)
+    const status = document.getElementById('status');
 
-        async function setup() {
+    async function setup() {
+        try {
+            // Explicitly point to the JS glue. 
+            // The browser will look for pokegameboy_bg.wasm automatically.
             const wasm = await init();
             wasm_mem = wasm.memory;
+            console.log("WASM Initialized successfully");
             
-            // Check if we already have a ROM saved in the browser
             const savedRom = localStorage.getItem('stored_rom');
             if (savedRom) {
                 status.innerText = "Auto-loading saved ROM...";
                 startWithBytes(new Uint8Array(JSON.parse(savedRom)));
+            } else {
+                status.innerText = "Ready. Please upload a ROM.";
             }
+        } catch (err) {
+            status.innerText = "FATAL: WASM failed to load.";
+            console.error(err);
         }
+    }
 
-        function startWithBytes(bytes) {
+    function startWithBytes(bytes) {
+        try {
             emu = new EmulatorState(bytes);
             status.innerText = "RUNNING";
             
-            const ctx = document.getElementById('screen').getContext('2d');
+            const canvas = document.getElementById('screen');
+            const ctx = canvas.getContext('2d');
             
             function loop() {
                 emu.tick_frame();
-                const pixels = new Uint8ClampedArray(wasm_mem.buffer, emu.framebuffer_ptr(), 160 * 144 * 4);
+                const ptr = emu.framebuffer_ptr();
+                // 160 * 144 * 4 bytes for RGBA
+                const pixels = new Uint8ClampedArray(wasm_mem.buffer, ptr, 92160);
                 ctx.putImageData(new ImageData(pixels, 160, 144), 0, 0);
                 requestAnimationFrame(loop);
             }
             requestAnimationFrame(loop);
+        } catch (err) {
+            status.innerText = "Error initializing Emulator.";
+            console.error(err);
         }
+    }
 
-        // Handle Manual Upload
-        document.getElementById('upload-btn').onclick = () => document.getElementById('loader').click();
-        document.getElementById('loader').onchange = async (e) => {
-            const file = e.target.files[0];
-            const buffer = await file.arrayBuffer();
-            const bytes = new Uint8Array(buffer);
-            
-            // Save to LocalStorage (Note: limited to ~5MB, perfect for Pokemon Red)
-            try {
-                localStorage.setItem('stored_rom', JSON.stringify(Array.from(bytes)));
-            } catch(e) { console.log("ROM too large for LocalStorage, will not persist."); }
-            
-            startWithBytes(bytes);
-        };
+    // --- INPUT HANDLING ---
+    const keyMap = {
+        "arrowdown": "d08", "arrowup": "d04", "arrowleft": "d02", "arrowright": "d01",
+        "enter": "b08", "s": "b04", "x": "b02", "z": "b01"
+    };
 
-        document.getElementById('clear-btn').onclick = () => {
-            localStorage.removeItem('stored_rom');
-            location.reload();
-        };
+    function handleKey(e, isDown) {
+        const action = keyMap[e.key.toLowerCase()];
+        if (!action) return;
+        
+        e.preventDefault();
+        const bit = parseInt(action.substring(1), 16);
+        if (action.startsWith("d")) {
+            isDown ? dpad &= ~bit : dpad |= bit;
+        } else {
+            isDown ? buttons &= ~bit : buttons |= bit;
+        }
+        
+        if (emu) emu.update_joypad(dpad, buttons);
+    }
 
-        setup();
-    </script>
-</body>
-</html>
+    window.addEventListener("keydown", (e) => handleKey(e, true));
+    window.addEventListener("keyup", (e) => handleKey(e, false));
+
+    // Handle Manual Upload
+    document.getElementById('upload-btn').onclick = () => document.getElementById('loader').click();
+    document.getElementById('loader').onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const buffer = await file.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+        
+        try {
+            localStorage.setItem('stored_rom', JSON.stringify(Array.from(bytes)));
+            console.log("ROM saved to storage");
+        } catch(e) { 
+            console.warn("Storage full, ROM not cached."); 
+        }
+        
+        startWithBytes(bytes);
+    };
+
+    document.getElementById('clear-btn').onclick = () => {
+        localStorage.removeItem('stored_rom');
+        location.reload();
+    };
+
+    setup();
+</script>
