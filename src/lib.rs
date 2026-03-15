@@ -88,13 +88,13 @@ impl EmulatorState {
         self.ppu.framebuffer.as_ptr()
     }
 
-    /// Returns the current save data (External RAM)
-    pub fn save(&self) -> Vec<u8> {
+    #[wasm_bindgen]
+    pub fn save_wasm(&self) -> Vec<u8> {
         self.mmu.get_save_data()
     }
 
-    /// Loads external save data into the MMU
-    pub fn load_save(&mut self, data: Vec<u8>) {
+    #[wasm_bindgen]
+    pub fn load_save_wasm(&mut self, data: Vec<u8>) {
         self.mmu.load_save_data(data);
     }
 
