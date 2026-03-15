@@ -9,12 +9,9 @@ Cycle-accurate Game Boy emulator targeting the Sharp LR35902 CPU, written in Rus
 
 Boots Pokemon Red/Blue.
 
-#### Local runtime  
-
-<img src="images/debugger.png" width="300" height="300">
-
-#### Deployed runtim
-<img src="images/initgameplay.png" width="300" height="300">
+| Local runtime|  Deployed runtime |
+| -------------| ----------------  |
+|<img src="images/debugger.png" width="300" height="300"> | <img src="images/initgameplay.png" width="300" height="300">|
 
 ## Technical details
 
@@ -29,7 +26,13 @@ Boots Pokemon Red/Blue.
 
 ---
 
-## Build
+## Play on the web
+Due to copyright, the rom is not provided, the wasm runtime can load .gb rom and save the sate as .sav
+
+[**🚀 Live Demo**](https://itsvinm.github.io/gameboy_emu_poke/)
+
+
+## Build Locally
 
 ```bash
 git clone https://github.com/itsVinM/gameboy_emulator.git
