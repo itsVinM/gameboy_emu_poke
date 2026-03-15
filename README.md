@@ -11,7 +11,7 @@ Boots Pokemon Red/Blue.
 
 | Local runtime|  Deployed runtime laptop | Deployed runtime mobile |
 | -------------| ----------------  | ----------------  |
-|<img src="images/debugger.png" width="300" height="300"> | <img src="images/initgameplay.png" width="300" height="300">| |
+|<img src="images/debugger.png" width="300" height="300"> | <img src="images/initgameplay.png" width="300" height="300">|  <img src="images/mobile.png" width="300" height="300"> |
 
 ## Technical details
 
