@@ -25,7 +25,7 @@
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
             align-items: center;
             justify-content: center;
-            overflow: hidden; /* Prevent scrolling while playing */
+            overflow: hidden; 
         }
 
         .console-card {
@@ -38,7 +38,6 @@
             box-shadow: 0 15px 35px -12px rgba(0, 0, 0, 0.1);
             text-align: center;
             width: 340px;
-            transition: width 0.3s ease;
         }
 
         h1 { 
@@ -83,9 +82,8 @@
             border-radius: 8px;
         }
 
-        /* Virtual Controls Styles */
         .mobile-controls {
-            display: none; /* Hidden on Desktop */
+            display: none;
             grid-template-columns: 1fr 1fr;
             gap: 20px;
             margin-top: 20px;
@@ -109,6 +107,7 @@
             gap: 12px;
         }
 
+        /* --- FIXED CSS HERE --- */
         .ctrl-btn {
             background: var(--btn-gray);
             color: white;
@@ -122,8 +121,7 @@
             font-size: 14px;
             touch-action: manipulation;
             box-shadow: 0 4px 0 #000;
-            active: transform translateY(2px);
-            active: box-shadow 0 2px 0 #000;
+            transition: transform 0.05s;
         }
 
         .ctrl-btn:active {
@@ -152,17 +150,14 @@
             border-radius: 8px;
         }
 
-        /* Responsive Breakpoint */
         @media (max-width: 600px) {
             .mobile-controls { display: grid; }
-            .legend { display: none; } /* Hide keys on mobile */
+            .legend { display: none; }
             .console-card { width: 92vw; padding: 16px; }
             canvas { width: 100%; height: auto; }
-            .button-group button { font-size: 8px; padding: 6px 10px; }
         }
 
         .button-group { display: flex; gap: 8px; justify-content: center; margin-top: 10px;}
-
         button {
             background: #1d1d1f;
             color: #fff;
@@ -173,10 +168,7 @@
             font-weight: 700;
             font-size: 10px;
             text-transform: uppercase;
-            transition: all 0.2s ease;
         }
-
-        button:hover { background: var(--accent); transform: translateY(-1px); }
         .btn-sec { background: transparent; color: var(--text-main); border: 1px solid #d1d1d6; }
         .hidden { display: none; }
     </style>
@@ -214,7 +206,7 @@
         <div class="button-group">
             <input type="file" id="rom-upload" class="hidden" accept=".gb">
             <button onclick="document.getElementById('rom-upload').click()">Load ROM</button>
-            <button class="btn-sec" onclick="document.getElementById('sav-upload').click()">SRAM</button>
+            <button class="btn-sec" onclick="document.getElementById('sav-upload').click()">Import .sav</button>
             <input type="file" id="sav-upload" class="hidden" accept=".sav">
             <button class="btn-sec" onclick="clearStorage()">Reset</button>
         </div>
@@ -223,7 +215,7 @@
     <script type="module">
         import init, { EmulatorState } from './pkg/pokegameboy.js';
 
-        let emu, wasm_mem;
+        let emu, wasm_mem, saveInterval;
         let dpad = 0x0F;    
         let buttons = 0x0F; 
         const statusEl = document.getElementById('status');
@@ -235,14 +227,13 @@
                 
                 const savedRom = localStorage.getItem('stored_rom');
                 if (savedRom) {
-                    statusEl.innerText = "System Ready: Resuming...";
+                    statusEl.innerText = "Resuming...";
                     startEmulator(new Uint8Array(JSON.parse(savedRom)));
                 } else {
                     statusEl.innerText = "Waiting for Cartridge";
                 }
             } catch (err) {
-                statusEl.innerText = "Runtime Initialization Error";
-                console.error(err);
+                statusEl.innerText = "Runtime Error";
             }
         }
 
@@ -250,8 +241,26 @@
             try {
                 emu = new EmulatorState(bytes);
                 statusEl.innerText = "Live";
-                const ctx = document.getElementById('screen').getContext('2d');
                 
+                // --- AUTO-LOAD SAVED PROGRESS ---
+                const savedData = localStorage.getItem('sram_save');
+                if (savedData) {
+                    emu.load_save_wasm(new Uint8Array(JSON.parse(savedData)));
+                    console.log("SRAM Restored from LocalStorage");
+                }
+
+                // --- START AUTO-SAVE LOOP (Every 5 seconds) ---
+                if (saveInterval) clearInterval(saveInterval);
+                saveInterval = setInterval(() => {
+                    if (emu) {
+                        const sram = emu.save_wasm();
+                        if (sram.length > 0) {
+                            localStorage.setItem('sram_save', JSON.stringify(Array.from(sram)));
+                        }
+                    }
+                }, 5000);
+
+                const ctx = document.getElementById('screen').getContext('2d');
                 function frame() {
                     emu.tick_frame();
                     const ptr = emu.framebuffer_ptr();
@@ -262,7 +271,6 @@
                 requestAnimationFrame(frame);
             } catch (err) {
                 statusEl.innerText = "Hardware Fault";
-                console.error(err);
             }
         }
 
@@ -277,11 +285,9 @@
             "a":          { type: "b", bit: 0x01 }  
         };
 
-        // Unified input handler
         function updateJoypadState(keyName, isDown) {
             const config = keyMap[keyName];
             if (!config || !emu) return;
-
             if (config.type === "d") {
                 isDown ? dpad &= ~config.bit : dpad |= config.bit;
             } else {
@@ -290,12 +296,12 @@
             emu.update_joypad(dpad, buttons);
         }
 
-        // Keyboard Events
         window.addEventListener("keydown", (e) => {
             const key = e.key.toLowerCase();
             if (keyMap[key]) {
                 e.preventDefault();
                 updateJoypadState(key, true);
+                // Manual backup to file on 'S' key
                 if (key === 's') {
                     const saveBytes = emu.save_wasm();
                     if (saveBytes.length > 0) saveToFile(saveBytes);
@@ -308,7 +314,6 @@
             if (keyMap[key]) updateJoypadState(key, false);
         });
 
-        // Touch Events (exposed to window for HTML ontouch calls)
         window.handleTouch = (keyName, isDown) => {
             updateJoypadState(keyName, isDown);
         };
@@ -321,8 +326,6 @@
             link.download = 'game_progress.sav';
             link.click();
             URL.revokeObjectURL(url);
-            statusEl.innerText = "SRAM Snapshot Exported";
-            setTimeout(() => statusEl.innerText = "Live", 1500);
         }
 
         document.getElementById('rom-upload').onchange = async (e) => {
@@ -338,12 +341,12 @@
             if (!file || !emu) return;
             const bytes = new Uint8Array(await file.arrayBuffer());
             emu.load_save_wasm(bytes);
-            statusEl.innerText = "SRAM Data Injected";
-            setTimeout(() => statusEl.innerText = "Live", 1500);
+            statusEl.innerText = "SRAM Injected";
         };
 
         window.clearStorage = () => {
             localStorage.removeItem('stored_rom');
+            localStorage.removeItem('sram_save');
             location.reload();
         };
 
