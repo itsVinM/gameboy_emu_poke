@@ -9,7 +9,7 @@ Cycle-accurate Game Boy emulator targeting the Sharp LR35902 CPU, written in Rus
 
 Boots Pokemon Red/Blue.
 
-<img src="images/emualtor_first.png" width="300" height="300">
+<img src="images/debugger.png" width="300" height="300">
 
 ## Technical details
 

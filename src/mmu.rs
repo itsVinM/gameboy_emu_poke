@@ -34,36 +34,31 @@ impl Mmu {
         mmu.io[0x47] = 0xFC; // BGP
         mmu
     }
-
     pub fn read(&self, addr: u16) -> u8 {
         match addr {
             0x0000..=0x3FFF => self.rom[addr as usize],
-            0x4000..=0x7FFF => {
-                self.rom[self.rom_bank * 0x4000 + (addr as usize - 0x4000)]
-            },
-            0xFF00 => {
-                let select = self.io[0];
-                if select & 0x10 == 0 {       // bit 4 low -> game wants D-pad
-                    0xC0 | 0x10 | self.dpad  // bit 7-5 always 1, but 4 =0
-                } else if select & 0x20 == 0 {//bit 5 low -> game wants buttons
-                    0xC0 | 0x20 | self.buttons
-                } else {
-                    0xFF // nothing selected
-                }
-            },
+            0x4000..=0x7FFF => self.rom[self.rom_bank * 0x4000 + (addr as usize - 0x4000)],
             0x8000..=0x9FFF => self.vram[addr as usize - 0x8000],
             0xA000..=0xBFFF => {
                 let offset = self.extram_bank * 0x2000 + (addr as usize - 0xA000);
                 *self.extram.get(offset).unwrap_or(&0xFF)
             },
             0xC000..=0xDFFF => self.wram[addr as usize - 0xC000],
-            0xE000..=0xFDFF => self.wram[addr as usize - 0xE000],
+            0xE000..=0xFDFF => self.wram[addr as usize - 0xE000], // Echo RAM
             0xFE00..=0xFE9F => self.oam[addr as usize - 0xFE00],
             0xFEA0..=0xFEFF => 0xFF,
-            0xFF00..=0xFF7F => self.io_read(addr),
+            
+            // --- IMPROVED IO HANDLING ---
+            0xFF00 => {
+                let select = self.io[0x00];
+                if select & 0x10 == 0 { (select & 0x30) | self.dpad | 0xC0 }
+                else if select & 0x20 == 0 { (select & 0x30) | self.buttons | 0xC0 }
+                else { 0xFF }
+            },
+            0xFF00..=0xFF7F => self.io[addr as usize - 0xFF00],
             0xFF80..=0xFFFE => self.hram[addr as usize - 0xFF80],
             0xFFFF          => self.ie,
-            
+            _ => 0xFF,
         }
     }
 

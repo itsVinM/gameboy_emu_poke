@@ -50,6 +50,22 @@ impl Cpu {
                | (h as u8) << 5
                | (c as u8) << 4;
     }
+    pub fn debug_print(&self, mmu: &Mmu) {
+        let pc = self.pc;
+        let op = mmu.read(pc);
+        let if_reg = mmu.read(0xFF0F);
+        let ie_reg = mmu.read(0xFFFF);
+        let joyp = mmu.read(0xFF00);
+        let ly = mmu.read(0xFF44); // Scanline counter
+
+        println!("--- [PC: {:#06X} OP: {:#04X}] ---", pc, op);
+        println!("REG | AF: {:#06X} BC: {:#06X} DE: {:#06X} HL: {:#06X}", self.af(), self.bc(), self.de(), self.hl());
+        println!("SYS | IF: {:#04X} IE: {:#04X} LY: {:#04X} JOYP: {:#04X}", if_reg, ie_reg, ly, joyp);
+        println!("---------------------------------");
+        
+        use std::io::{self, Write};
+        io::stdout().flush().unwrap();
+    }
 
     // --- Fetch ---
     fn fetch8(&mut self, mmu: &Mmu) -> u8 {
@@ -112,17 +128,19 @@ impl Cpu {
     // --- Main step ---
     pub fn step(&mut self, mmu: &mut Mmu) -> u32 {
         // Handle interrupts
-        let triggered = mmu.io[0x0F] & mmu.ie & 0x1F;
+        let triggered = mmu.read(0xFF0F) & mmu.read(0xFFFF) & 0x1F;
         if triggered != 0 {
-            self.halted = false;
+            self.halted = false; // any triggered interrupt wakes the cpu
             if self.ime {
                 self.ime = false;
                 let bit = triggered.trailing_zeros() as u8;
-                mmu.io[0x0F] &= !(1 << bit);
-                let vector: u16 = 0x0040 + (bit as u16) * 8;
+                let mut if_reg = mmu.read(0xFF0F);
+                if_reg &= !(1 << bit);
+                mmu.write(0xFF0F, if_reg);
+
                 self.push16(mmu, self.pc);
-                self.pc = vector;
-                return 20;
+                self.pc = 0x0040 + (bit as u16 * 8);
+                return 20; // Interrupt service overhead
             }
         }
 
