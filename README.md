@@ -5,7 +5,7 @@
 ![Rust](https://img.shields.io/badge/Rust-000000?style=flat&logo=rust&logoColor=white)
 ![Build](https://img.shields.io/badge/build-passing-brightgreen)
 
-Cycle-accurate Game Boy emulator targeting the Sharp LR35902 CPU, written in Rust. Built as the **second validation target** of a portable test framework — after CHIP-8 (C++) validated the adapter interface, this project stress-tests it at real scale: 500+ tests, property-based invariant checking, golden-file PPU validation, and Pokemon Red booting to the title screen as the end-to-end acceptance test.
+Cycle-accurate Game Boy emulator targeting the Sharp LR35902 CPU, written in Rust. Built as the **second validation target** of a portable test framework — after CHIP-8 (Golang) validated the adapter interface, this project stress-tests it at real scale: 500+ tests, property-based invariant checking, golden-file PPU validation, and Pokemon Red booting to the title screen as the end-to-end acceptance test.
 
 Boots Pokemon Red/Blue.
 
