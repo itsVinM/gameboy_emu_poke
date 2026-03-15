@@ -3,19 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>🦀 RUST Game Boy — LR35902</title>
+    <title>🦀 RUST GAMEBOY - LR35902 RUNTIME</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg: #f5f5f7;
             --surface: #ffffff;
-            --accent: #df6137;
+            --oxide: #f9612e;
             --btn-dark: #2c2c2e;
             --text-main: #1d1d1f;
             --text-muted: #86868b;
+            --border-light: #e5e5e7;
         }
 
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
 
         body { 
             background: var(--bg);
@@ -27,14 +28,14 @@
             align-items: center;
             justify-content: center;
             touch-action: none;
+            overflow: hidden;
         }
 
-        /* --- MAIN CONSOLE CARD --- */
         .console-card {
             background: var(--surface);
             padding: 40px 30px;
             border-radius: 40px;
-            box-shadow: 0 30px 60px rgba(0,0,0,0.08);
+            box-shadow: 0 30px 60px rgba(0,0,0,0.06);
             width: 95vw;
             max-width: 580px;
             display: flex;
@@ -51,34 +52,17 @@
             padding: 0 10px;
         }
 
-        .brand { font-weight: 900; font-size: 1.1rem; color: var(--accent); font-style: italic; }
-        .live-label { font-family: 'JetBrains Mono'; font-size: 10px; font-weight: 800; color: var(--text-muted); letter-spacing: 2px; }
+        .brand { font-weight: 900; font-size: 1.1rem; color: var(--oxide); font-style: italic; letter-spacing: -0.5px; }
+        #status { font-family: 'JetBrains Mono'; font-size: 9px; font-weight: 800; color: var(--oxide); letter-spacing: 1px; }
 
-        /* --- SCREEN WITH INTEGRATED STATUS BAR --- */
         .display-container {
             width: 100%;
             background: #000;
             border-radius: 24px;
             overflow: hidden;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.12);
             margin-bottom: 35px;
         }
-
-        /* Integrated Status Bar from your Screenshots */
-        .hw-status {
-            background: #222;
-            padding: 8px 15px;
-            display: flex;
-            justify-content: center;
-            gap: 12px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 9px;
-            color: #777;
-            border-bottom: 1px solid #333;
-        }
-
-        .hw-status span { color: #eee; }
-        .running-tag { color: #4ade80 !important; font-weight: 800; }
 
         canvas { 
             width: 100%; 
@@ -87,19 +71,18 @@
             display: block;
         }
 
-        /* --- BUTTONS STYLE FROM SCREENSHOT --- */
         .controls-layout {
             display: flex;
             width: 100%;
             justify-content: space-between;
             align-items: center;
             padding: 0 10px;
-            margin-bottom: 35px;
+            margin-bottom: 40px;
         }
 
         .dpad { display: grid; grid-template-areas: ". u ." "l . r" ". d ."; gap: 10px; }
-        .center-group { display: flex; flex-direction: column; gap: 8px; transform: translateY(10px); }
-        .action-group { display: flex; gap: 15px; }
+        .center-group { display: flex; flex-direction: column; gap: 8px; transform: translateY(12px); }
+        .action-group { display: flex; gap: 18px; }
 
         .ctrl-btn {
             background: var(--btn-dark);
@@ -111,28 +94,35 @@
             cursor: pointer;
             user-select: none;
             box-shadow: 0 6px 0 #000;
-            transition: all 0.1s ease;
+            transition: all 0.08s ease;
         }
 
-        .sq { width: 48px; height: 48px; border-radius: 12px; font-size: 18px; }
-        .round { width: 62px; height: 62px; border-radius: 50%; font-size: 22px; }
-        .pill { width: 55px; height: 18px; border-radius: 20px; font-size: 7px; box-shadow: 0 3px 0 #000; }
+        .sq { width: 50px; height: 50px; border-radius: 14px; font-size: 18px; }
+        .round { width: 68px; height: 68px; border-radius: 50%; font-size: 22px; }
+        .pill { width: 60px; height: 22px; border-radius: 20px; font-size: 8px; box-shadow: 0 3px 0 #000; }
 
         .ctrl-btn.active, .ctrl-btn:active {
-            background: var(--accent);
+            background: var(--oxide);
             transform: translateY(3px);
             box-shadow: 0 2px 0 #000;
         }
 
-        /* --- SYSTEM FOOTER --- */
-        .footer-tools { display: flex; gap: 12px; width: 100%; justify-content: center; }
+        .footer-tools { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 12px; 
+            width: 100%; 
+        }
         
         .sys-btn {
-            background: #1d1d1f; color: white; border: none;
-            padding: 12px 20px; border-radius: 12px; font-weight: 700;
-            font-size: 10px; font-family: 'JetBrains Mono'; cursor: pointer;
+            background: var(--btn-dark); color: white; border: none;
+            padding: 14px; border-radius: 14px; font-weight: 700;
+            font-size: 9px; font-family: 'JetBrains Mono'; cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
         }
-        .btn-outline { background: white; color: #1d1d1f; border: 2px solid #e5e5e7; }
+        .btn-sec { background: white; color: var(--text-main); border: 1px solid var(--border-light); }
+        .hidden { display: none; }
 
     </style>
 </head>
@@ -140,43 +130,41 @@
 
     <div class="console-card">
         <div class="header-meta">
-            <div class="brand">🦀 RUST Gameboy — LR35902 Runtime</div>
-
+            <div class="brand">🦀 RUST GAMEBOY</div>
+            <div id="status">HARDWARE STANDBY</div>
         </div>
 
         <div class="display-container">
-            <div class="hw-status">
-                <div>CPU: <span>----</span></div>
-                <div>LY: <span>--</span></div>
-                <div>IF: <span>--</span></div>
-                <div class="running-tag">● RUNNING</div>
-            </div>
             <canvas id="screen" width="160" height="144"></canvas>
         </div>
 
         <div class="controls-layout">
             <div class="dpad">
-                <div id="key-arrowup" class="ctrl-btn sq" style="grid-area: u">↑</div>
-                <div id="key-arrowleft" class="ctrl-btn sq" style="grid-area: l">←</div>
-                <div id="key-arrowright" class="ctrl-btn sq" style="grid-area: r">→</div>
-                <div id="key-arrowdown" class="ctrl-btn sq" style="grid-area: d">↓</div>
+                <div id="btn-arrowup" class="ctrl-btn sq" style="grid-area: u" ontouchstart="handleTouch('arrowup', true)" ontouchend="handleTouch('arrowup', false)">↑</div>
+                <div id="btn-arrowleft" class="ctrl-btn sq" style="grid-area: l" ontouchstart="handleTouch('arrowleft', true)" ontouchend="handleTouch('arrowleft', false)">←</div>
+                <div id="btn-arrowright" class="ctrl-btn sq" style="grid-area: r" ontouchstart="handleTouch('arrowright', true)" ontouchend="handleTouch('arrowright', false)">→</div>
+                <div id="btn-arrowdown" class="ctrl-btn sq" style="grid-area: d" ontouchstart="handleTouch('arrowdown', true)" ontouchend="handleTouch('arrowdown', false)">↓</div>
             </div>
 
             <div class="center-group">
-                <div id="key-shift" class="ctrl-btn pill">SELECT</div>
-                <div id="key-enter" class="ctrl-btn pill">START</div>
+                <div id="btn-s" class="ctrl-btn pill" ontouchstart="handleTouch('s', true)" ontouchend="handleTouch('s', false)">SELECT</div>
+                <div id="btn-enter" class="ctrl-btn pill" ontouchstart="handleTouch('enter', true)" ontouchend="handleTouch('enter', false)">START</div>
             </div>
 
             <div class="action-group">
-                <div id="key-b" class="ctrl-btn round">B</div>
-                <div id="key-a" class="ctrl-btn round">A</div>
+                <div id="btn-b" class="ctrl-btn round" ontouchstart="handleTouch('b', true)" ontouchend="handleTouch('b', false)">B</div>
+                <div id="btn-a" class="ctrl-btn round" ontouchstart="handleTouch('a', true)" ontouchend="handleTouch('a', false)">A</div>
             </div>
         </div>
 
         <div class="footer-tools">
-            <input type="file" id="rom-upload" style="display:none" accept=".gb">
+            <input type="file" id="rom-upload" class="hidden" accept=".gb">
+            <input type="file" id="sav-upload" class="hidden" accept=".sav">
+            
             <button class="sys-btn" onclick="document.getElementById('rom-upload').click()">LOAD ROM</button>
-            <button class="sys-btn btn-outline" onclick="clearStorage()">RESET SYSTEM</button>
+            <button class="sys-btn" onclick="exportSram()">EXPORT .SAV</button>
+            <button class="sys-btn btn-sec" onclick="document.getElementById('sav-upload').click()">IMPORT .SAV</button>
+            <button class="sys-btn btn-sec" onclick="clearStorage()">RESET CORE</button>
         </div>
     </div>
 
@@ -184,62 +172,119 @@
         import init, { EmulatorState } from './pkg/pokegameboy.js';
 
         let emu, wasm_mem;
+        let dpad = 0x0F;    
+        let buttons = 0x0F; 
+        const statusEl = document.getElementById('status');
 
-        // Key Mapping (A to A, B to B)
         const keyMap = {
-            'ArrowUp': 'arrowup', 'ArrowDown': 'arrowdown', 
-            'ArrowLeft': 'arrowleft', 'ArrowRight': 'arrowright',
-            'a': 'a', 'b': 'b', 'A': 'a', 'B': 'b',
-            'Enter': 'enter', 'Shift': 'shift'
+            "arrowdown":  { type: "d", bit: 0x08 },
+            "arrowup":    { type: "d", bit: 0x04 },
+            "arrowleft":  { type: "d", bit: 0x02 },
+            "arrowright": { type: "d", bit: 0x01 },
+            "enter":      { type: "b", bit: 0x08 }, 
+            "s":          { type: "b", bit: 0x04 }, 
+            "b":          { type: "b", bit: 0x02 }, 
+            "a":          { type: "b", bit: 0x01 }  
         };
-
-        function updateInput(key, isPressed) {
-            const id = keyMap[key];
-            if (!id) return;
-            const btn = document.getElementById(`key-${id.toLowerCase()}`);
-            if (btn) isPressed ? btn.classList.add('active') : btn.classList.remove('active');
-            // if (emu) emu.set_input(id, isPressed);
-        }
-
-        window.addEventListener('keydown', (e) => updateInput(e.key, true));
-        window.addEventListener('keyup', (e) => updateInput(e.key, false));
-
-        document.querySelectorAll('.ctrl-btn').forEach(btn => {
-            const key = btn.id.replace('key-', '');
-            btn.onmousedown = btn.ontouchstart = (e) => { e.preventDefault(); updateInput(key, true); if(window.navigator.vibrate) window.navigator.vibrate(5); };
-            btn.onmouseup = btn.ontouchend = btn.onmouseleave = (e) => { e.preventDefault(); updateInput(key, false); };
-        });
 
         async function setup() {
             try {
                 const wasm = await init();
                 wasm_mem = wasm.memory;
                 const savedRom = localStorage.getItem('stored_rom');
-                if (savedRom) startEmulator(new Uint8Array(JSON.parse(savedRom)));
-            } catch (e) { console.error(e); }
+                if (savedRom) {
+                    statusEl.innerText = "RESUMING SYSTEM...";
+                    startEmulator(new Uint8Array(JSON.parse(savedRom)));
+                } else {
+                    statusEl.innerText = "WAITING FOR CARTRIDGE";
+                }
+            } catch (err) { statusEl.innerText = "INIT ERROR"; }
         }
 
         function startEmulator(bytes) {
-            emu = new EmulatorState(bytes);
-            const ctx = document.getElementById('screen').getContext('2d');
-            function frame() {
-                emu.tick_frame();
-                const ptr = emu.framebuffer_ptr();
-                const pixels = new Uint8ClampedArray(wasm_mem.buffer, ptr, 160 * 144 * 4);
-                ctx.putImageData(new ImageData(pixels, 160, 144), 0, 0);
+            try {
+                emu = new EmulatorState(bytes);
+                statusEl.innerText = "LIVE";
+                const ctx = document.getElementById('screen').getContext('2d');
+                
+                function frame() {
+                    emu.tick_frame();
+                    const ptr = emu.framebuffer_ptr();
+                    const pixels = new Uint8ClampedArray(wasm_mem.buffer, ptr, 160 * 144 * 4);
+                    ctx.putImageData(new ImageData(pixels, 160, 144), 0, 0);
+                    requestAnimationFrame(frame);
+                }
                 requestAnimationFrame(frame);
-            }
-            requestAnimationFrame(frame);
+            } catch (err) { statusEl.innerText = "HARDWARE FAULT"; }
         }
 
-        document.getElementById('rom-upload').onchange = async (e) => {
+        function updateJoypadState(keyName, isDown) {
+            const config = keyMap[keyName];
+            if (!config || !emu) return;
+
+            const btn = document.getElementById(`btn-${keyName}`);
+            if (btn) isDown ? btn.classList.add('active') : btn.classList.remove('active');
+
+            if (config.type === "d") {
+                isDown ? dpad &= ~config.bit : dpad |= config.bit;
+            } else {
+                isDown ? buttons &= ~config.bit : buttons |= config.bit;
+            }
+            emu.update_joypad(dpad, buttons);
+        }
+
+        // --- Save / Load Methods ---
+        window.exportSram = () => {
+            if (!emu) return;
+            const saveBytes = emu.save_wasm(); // Calls your Rust save method
+            if (saveBytes && saveBytes.length > 0) {
+                const blob = new Blob([new Uint8Array(saveBytes)], { type: 'application/octet-stream' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'game_progress.sav';
+                link.click();
+                URL.revokeObjectURL(url);
+                statusEl.innerText = "SRAM EXPORTED";
+                setTimeout(() => statusEl.innerText = "LIVE", 1500);
+            }
+        };
+
+        document.getElementById('sav-upload').onchange = async (e) => {
+            if (!emu) return;
             const file = e.target.files[0];
             const bytes = new Uint8Array(await file.arrayBuffer());
+            emu.load_save_wasm(bytes); // Calls your Rust load method
+            statusEl.innerText = "SRAM INJECTED";
+            setTimeout(() => statusEl.innerText = "LIVE", 1500);
+        };
+
+        // Input Bindings
+        window.addEventListener("keydown", (e) => {
+            const key = e.key.toLowerCase();
+            if (keyMap[key]) {
+                e.preventDefault();
+                updateJoypadState(key, true);
+                // Quick-save shortcut on 'S' key
+                if (key === 's') exportSram();
+            }
+        });
+
+        window.addEventListener("keyup", (e) => {
+            const key = e.key.toLowerCase();
+            if (keyMap[key]) updateJoypadState(key, false);
+        });
+
+        window.handleTouch = (keyName, isDown) => updateJoypadState(keyName, isDown);
+
+        document.getElementById('rom-upload').onchange = async (e) => {
+            const bytes = new Uint8Array(await e.target.files[0].arrayBuffer());
             localStorage.setItem('stored_rom', JSON.stringify(Array.from(bytes)));
             startEmulator(bytes);
         };
 
         window.clearStorage = () => { localStorage.clear(); location.reload(); };
+        
         setup();
     </script>
 </body>
