@@ -1,0 +1,15 @@
+{
+  "name": "pokegameboy",
+  "type": "module",
+  "version": "0.2.0",
+  "files": [
+    "pokegameboy_bg.wasm",
+    "pokegameboy.js",
+    "pokegameboy.d.ts"
+  ],
+  "main": "pokegameboy.js",
+  "types": "pokegameboy.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
