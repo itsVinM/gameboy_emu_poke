@@ -17,6 +17,8 @@ impl Ppu {
             self.ly = 0; 
             self.dot = 0; 
             mmu.io[0x44] = 0;
+            // Reset STAT to Mode 0 when LCD is off
+            mmu.io[0x41] = mmu.io[0x41] & 0xFC; 
             return; 
         }
 
@@ -25,23 +27,53 @@ impl Ppu {
         // A scanline takes exactly 456 dots
         if self.dot >= 456 {
             self.dot -= 456;
-            
-            // Increment LY
             self.ly = (self.ly + 1) % 154;
-            
-            // Write to MMU so CPU can see the change immediately
             mmu.io[0x44] = self.ly;
 
-            // V-Blank triggers exactly when LY hits 144
-            if self.ly == 144 {
-                mmu.io[0x0F] |= 0x01; // Set VBlank Flag
+            // LYC Check: Bit 2 of STAT is set if LY == LYC
+            if self.ly == mmu.io[0x45] {
+                mmu.io[0x41] |= 0x04;
+                if mmu.io[0x41] & 0x40 != 0 { mmu.io[0x0F] |= 0x02; } // STAT IRQ
+            } else {
+                mmu.io[0x41] &= !0x04;
             }
 
-            // Render visible lines
-            if self.ly < 144 {
+            if self.ly == 144 {
+                mmu.io[0x0F] |= 0x01; // Request V-Blank Interrupt
+            }
+        }
+
+        // --- MODE SWITCHING (The Oak Fix) ---
+        let mut stat = mmu.io[0x41];
+        let old_mode = stat & 0x03;
+        let new_mode = if self.ly >= 144 {
+            1 // Mode 1: V-Blank
+        } else if self.dot < 80 {
+            2 // Mode 2: OAM Search
+        } else if self.dot < 252 {
+            3 // Mode 3: Data Transfer
+        } else {
+            0 // Mode 0: H-Blank
+        };
+
+        if old_mode != new_mode {
+            stat = (stat & 0xFC) | new_mode;
+            
+            // Mode Interrupts: Many games wait for these to progress
+            let interrupt = match new_mode {
+                0 => stat & 0x08 != 0, // H-Blank IRQ
+                1 => stat & 0x10 != 0, // V-Blank IRQ
+                2 => stat & 0x20 != 0, // OAM IRQ
+                _ => false,
+            };
+            if interrupt { mmu.io[0x0F] |= 0x02; } // Trigger STAT Interrupt
+            
+            // Render exactly once per line (transition to H-Blank)
+            if new_mode == 0 && self.ly < 144 {
                 self.render_scanline(mmu, lcdc);
             }
         }
+        mmu.io[0x41] = stat;
     }
 
     fn render_scanline(&mut self, mmu: &Mmu, lcdc: u8) {

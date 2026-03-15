@@ -1,0 +1,10 @@
+/Users/vincentiumocanu/Documents/Rust/pokegameboy/target/wasm32-unknown-unknown/release/deps/memoffset-96bebe3813043fbf.d: /Users/vincentiumocanu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/memoffset-0.6.5/src/lib.rs /Users/vincentiumocanu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/memoffset-0.6.5/src/raw_field.rs /Users/vincentiumocanu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/memoffset-0.6.5/src/offset_of.rs /Users/vincentiumocanu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/memoffset-0.6.5/src/span_of.rs
+
+/Users/vincentiumocanu/Documents/Rust/pokegameboy/target/wasm32-unknown-unknown/release/deps/libmemoffset-96bebe3813043fbf.rlib: /Users/vincentiumocanu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/memoffset-0.6.5/src/lib.rs /Users/vincentiumocanu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/memoffset-0.6.5/src/raw_field.rs /Users/vincentiumocanu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/memoffset-0.6.5/src/offset_of.rs /Users/vincentiumocanu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/memoffset-0.6.5/src/span_of.rs
+
+/Users/vincentiumocanu/Documents/Rust/pokegameboy/target/wasm32-unknown-unknown/release/deps/libmemoffset-96bebe3813043fbf.rmeta: /Users/vincentiumocanu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/memoffset-0.6.5/src/lib.rs /Users/vincentiumocanu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/memoffset-0.6.5/src/raw_field.rs /Users/vincentiumocanu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/memoffset-0.6.5/src/offset_of.rs /Users/vincentiumocanu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/memoffset-0.6.5/src/span_of.rs
+
+/Users/vincentiumocanu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/memoffset-0.6.5/src/lib.rs:
+/Users/vincentiumocanu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/memoffset-0.6.5/src/raw_field.rs:
+/Users/vincentiumocanu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/memoffset-0.6.5/src/offset_of.rs:
+/Users/vincentiumocanu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/memoffset-0.6.5/src/span_of.rs:

@@ -11,6 +11,7 @@ pub struct Mmu {
     pub ie:       u8,
     pub buttons: u8, // face buttons: Start | Select | B | A (active-low, 0=pressed)
     pub dpad: u8,   // directions: Down | Up | Left | Right 
+    pub prev_joyp: u8,
 }
 
 impl Mmu {
@@ -28,11 +29,23 @@ impl Mmu {
             ie:          0,
             buttons: 0x0F,
             dpad: 0x0F,     // nothing pressed
+            prev_joyp: 0x0F,
         };
         // Boot state
         mmu.io[0x40] = 0x91; // LCDC
         mmu.io[0x47] = 0xFC; // BGP
         mmu
+    }
+    // save data
+    pub fn get_save_data(&self) -> Vec<u8> {
+        self.extram.clone()
+    }
+
+    // Loads save data into External RAM
+    pub fn load_save_data(&mut self, data: Vec<u8>) {
+        if data.len() == self.extram.len() {
+            self.extram = data;
+        }
     }
     pub fn read(&self, addr: u16) -> u8 {
         match addr {
@@ -50,15 +63,21 @@ impl Mmu {
             
             // --- IMPROVED IO HANDLING ---
             0xFF00 => {
-                let select = self.io[0x00];
-                if select & 0x10 == 0 { (select & 0x30) | self.dpad | 0xC0 }
-                else if select & 0x20 == 0 { (select & 0x30) | self.buttons | 0xC0 }
-                else { 0xFF }
+                let select = self.io[0x00] & 0x30; // Only bits 4 & 5 matter for selection
+                let mut res = select | 0xC0;      // Bits 6 & 7 are always 1
+                
+                if (select & 0x10) == 0 { // Direction keys selected
+                    res |= self.dpad & 0x0F;
+                } else if (select & 0x20) == 0 { // Button keys selected
+                    res |= self.buttons & 0x0F;
+                } else {
+                    res |= 0x0F; // Nothing selected, bits are high
+                }
+                res
             },
             0xFF00..=0xFF7F => self.io[addr as usize - 0xFF00],
             0xFF80..=0xFFFE => self.hram[addr as usize - 0xFF80],
             0xFFFF          => self.ie,
-            _ => 0xFF,
         }
     }
 

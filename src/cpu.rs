@@ -81,19 +81,19 @@ impl Cpu {
     }
 
     // --- Stack ---
-    fn push16(&mut self, mmu: &mut Mmu, val: u16) {
+    pub fn push16(&mut self, mmu: &mut Mmu, val: u16) {
         self.sp = self.sp.wrapping_sub(1);
-        mmu.write(self.sp, (val >> 8) as u8);
+        mmu.write(self.sp, (val >> 8) as u8); // High byte first
         self.sp = self.sp.wrapping_sub(1);
-        mmu.write(self.sp, val as u8);
+        mmu.write(self.sp, (val & 0xFF) as u8); // Low byte second
     }
 
-    fn pop16(&mut self, mmu: &Mmu) -> u16 {
-        let lo = mmu.read(self.sp) as u16;
+    pub fn pop16(&mut self, mmu: &mut Mmu) -> u16 {
+        let low = mmu.read(self.sp) as u16;
         self.sp = self.sp.wrapping_add(1);
-        let hi = mmu.read(self.sp) as u16;
+        let high = mmu.read(self.sp) as u16;
         self.sp = self.sp.wrapping_add(1);
-        hi << 8 | lo
+        (high << 8) | low
     }
 
     // --- r8 helpers (B C D E H L (HL) A) ---
@@ -133,6 +133,7 @@ impl Cpu {
             self.halted = false; // any triggered interrupt wakes the cpu
             if self.ime {
                 self.ime = false;
+                
                 let bit = triggered.trailing_zeros() as u8;
                 let mut if_reg = mmu.read(0xFF0F);
                 if_reg &= !(1 << bit);
@@ -141,6 +142,8 @@ impl Cpu {
                 self.push16(mmu, self.pc);
                 self.pc = 0x0040 + (bit as u16 * 8);
                 return 20; // Interrupt service overhead
+                println!("  -> JUMPED! First instruction at 0040 is: {:02X}", mmu.read(0x0040));
+            
             }
         }
 
@@ -225,6 +228,7 @@ impl Cpu {
                 let v = self.read_r8(src, mmu);
                 self.write_r8(dst, v, mmu);
                 if src == 6 || dst == 6 { 8 } else { 4 }
+                // Inside step(), after the jump to 0x0040:
             }
 
             // --- ADD HL, r16 ---
