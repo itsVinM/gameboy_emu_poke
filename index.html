@@ -53,7 +53,7 @@
         }
 
         .brand { font-weight: 900; font-size: 1.1rem; color: var(--oxide); font-style: italic; letter-spacing: -0.5px; }
-        #status { font-family: 'JetBrains Mono'; font-size: 9px; font-weight: 800; color: var(--oxide); letter-spacing: 1px; }
+        #status { font-family: 'JetBrains Mono'; font-size: 9px; font-weight: 800; color: var(--oxide); letter-spacing: 1px; transition: all 0.3s; }
 
         .display-container {
             width: 100%;
@@ -164,7 +164,7 @@
             <button class="sys-btn" onclick="document.getElementById('rom-upload').click()">LOAD ROM</button>
             <button class="sys-btn" onclick="exportSram()">EXPORT .SAV</button>
             <button class="sys-btn btn-sec" onclick="document.getElementById('sav-upload').click()">IMPORT .SAV</button>
-            <button class="sys-btn btn-sec" onclick="clearStorage()">RESET CORE</button>
+            <button class="sys-btn btn-sec" onclick="clearStorage()" style="color: #ff3b30;">WIPE ALL</button>
         </div>
     </div>
 
@@ -204,6 +204,15 @@
         function startEmulator(bytes) {
             try {
                 emu = new EmulatorState(bytes);
+
+                // --- Persistence: Load Auto-Save ---
+                const autoSave = localStorage.getItem('auto_save_sram');
+                if (autoSave) {
+                    const sramBytes = new Uint8Array(JSON.parse(autoSave));
+                    emu.load_save_wasm(sramBytes);
+                    console.log("SRAM Restored from LocalStorage");
+                }
+
                 statusEl.innerText = "LIVE";
                 const ctx = document.getElementById('screen').getContext('2d');
                 
@@ -215,6 +224,25 @@
                     requestAnimationFrame(frame);
                 }
                 requestAnimationFrame(frame);
+
+                // --- Persistence: Auto-Save Interval (30s) ---
+                setInterval(() => {
+                    if (emu) {
+                        const saveBytes = emu.save_wasm();
+                        if (saveBytes && saveBytes.length > 0) {
+                            localStorage.setItem('auto_save_sram', JSON.stringify(Array.from(saveBytes)));
+                            // Visual feedback for auto-save
+                            const oldText = statusEl.innerText;
+                            statusEl.innerText = "SYNCED";
+                            statusEl.style.color = "#4cd964"; 
+                            setTimeout(() => {
+                                statusEl.innerText = "LIVE";
+                                statusEl.style.color = "";
+                            }, 1000);
+                        }
+                    }
+                }, 30000);
+
             } catch (err) { statusEl.innerText = "HARDWARE FAULT"; }
         }
 
@@ -233,19 +261,21 @@
             emu.update_joypad(dpad, buttons);
         }
 
-        // --- Save / Load Methods ---
         window.exportSram = () => {
             if (!emu) return;
-            const saveBytes = emu.save_wasm(); // Calls your Rust save method
+            const saveBytes = emu.save_wasm();
             if (saveBytes && saveBytes.length > 0) {
+                // Ensure LocalStorage is also up to date
+                localStorage.setItem('auto_save_sram', JSON.stringify(Array.from(saveBytes)));
+                
                 const blob = new Blob([new Uint8Array(saveBytes)], { type: 'application/octet-stream' });
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.href = url;
-                link.download = 'game_progress.sav';
+                link.download = 'trainer_save.sav';
                 link.click();
                 URL.revokeObjectURL(url);
-                statusEl.innerText = "SRAM EXPORTED";
+                statusEl.innerText = "SAV FILE EXPORTED";
                 setTimeout(() => statusEl.innerText = "LIVE", 1500);
             }
         };
@@ -254,19 +284,17 @@
             if (!emu) return;
             const file = e.target.files[0];
             const bytes = new Uint8Array(await file.arrayBuffer());
-            emu.load_save_wasm(bytes); // Calls your Rust load method
-            statusEl.innerText = "SRAM INJECTED";
+            emu.load_save_wasm(bytes); 
+            localStorage.setItem('auto_save_sram', JSON.stringify(Array.from(bytes)));
+            statusEl.innerText = "SAV INJECTED";
             setTimeout(() => statusEl.innerText = "LIVE", 1500);
         };
 
-        // Input Bindings
         window.addEventListener("keydown", (e) => {
             const key = e.key.toLowerCase();
             if (keyMap[key]) {
                 e.preventDefault();
                 updateJoypadState(key, true);
-                // Quick-save shortcut on 'S' key
-                if (key === 's') exportSram();
             }
         });
 
@@ -283,7 +311,12 @@
             startEmulator(bytes);
         };
 
-        window.clearStorage = () => { localStorage.clear(); location.reload(); };
+        window.clearStorage = () => { 
+            if(confirm("Confirm: Wipe all ROM and progress data?")) {
+                localStorage.clear(); 
+                location.reload(); 
+            }
+        };
         
         setup();
     </script>
