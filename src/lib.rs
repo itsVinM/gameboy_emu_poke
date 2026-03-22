@@ -1,4 +1,5 @@
 use wasm_bindgen::prelude::*;
+#[warn(dead_code)]
 use web_sys::{CanvasRenderingContext2d, ImageData};
 
 pub mod cpu;

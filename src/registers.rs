@@ -1,4 +1,3 @@
-// src/resisters.rs
 #[allow(dead_code)]
 #[derive(Clone, Copy, Debug)]
 pub struct Registers {
@@ -7,7 +6,7 @@ pub struct Registers {
     pub d: u8, pub e:u8,
     pub h: u8, pub l:u8,
     pub sp: u16, pub pc: u16,
-    pub ime: bool, pub halt: bool,
+    pub ime: bool,
 }
 
 impl Registers {
@@ -25,7 +24,6 @@ impl Registers {
             sp: 0xFFFE,
             pc: 0x0100,    // Entry point of ROM
             ime: false,
-            halt: false,
         }
     }
    
@@ -35,7 +33,10 @@ impl Registers {
     pub fn get_de(&self) -> u16 { u16::from_le_bytes([self.e, self.d]) }
     pub fn get_hl(&self) -> u16 { u16::from_le_bytes([self.l, self.h]) }
 
-
+    pub fn set_af(&mut self, v: u16) { 
+        self.a = (v >> 8) as u8; 
+        self.f = v as u8 & 0xF0; 
+    }
     pub fn set_bc(&mut self, value: u16) { 
         let [c, b] = value.to_le_bytes(); 
         self.c = c; 

@@ -76,7 +76,7 @@ fn main() {
 
         window.set_title(&format!(
             "PokéGB | PC:{:04X} | LY:{:02X} | IF:{:02X} | IE:{:02X}",
-            cpu.pc, mmu.read(0xFF44), mmu.read(0xFF0F), mmu.read(0xFFFF)
+            cpu.regs.pc, mmu.read(0xFF44), mmu.read(0xFF0F), mmu.read(0xFFFF)
         ));
 
         render_frame(&mut fb, &ppu, w, h, sc);

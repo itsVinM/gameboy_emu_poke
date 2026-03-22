@@ -43,8 +43,12 @@ impl Mmu {
 
     // Loads save data into External RAM
     pub fn load_save_data(&mut self, data: Vec<u8>) {
-        if data.len() == self.extram.len() {
-            self.extram = data;
+        let len = self.extram.len();
+        if data.len() >= len {
+            self.extram[..len].copy_from_slice(&data[..len]);
+        } else {
+            // partial load — copy what we have
+            self.extram[..data.len()].copy_from_slice(&data);
         }
     }
     pub fn read(&self, addr: u16) -> u8 {
@@ -84,6 +88,9 @@ impl Mmu {
     pub fn write(&mut self, addr: u16, val: u8) {
         match addr {
             // MBC3 ROM bank select
+            0x0000..=0x1FFF => {
+                // 0x0A enables, anything else disables
+            }
             0x2000..=0x3FFF => {
                 self.rom_bank = if val == 0 { 1 } else { (val & 0x7F) as usize };
             }
@@ -107,7 +114,7 @@ impl Mmu {
             _               => {}
         }
     }
-
+    #[warn(dead_code)]
     fn io_read(&self, addr: u16) -> u8 {
         self.io[addr as usize - 0xFF00]
     }
