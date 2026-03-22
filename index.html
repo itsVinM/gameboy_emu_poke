@@ -18,9 +18,9 @@
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
 
-        body { 
+        body {
             background: var(--bg);
-            color: var(--text-main); 
+            color: var(--text-main);
             display: flex;
             min-height: 100vh;
             margin: 0;
@@ -33,7 +33,7 @@
 
         .console-card {
             background: var(--surface);
-            padding: 40px 30px;
+            padding: clamp(16px, 4vw, 40px) clamp(12px, 3vw, 30px);
             border-radius: 40px;
             box-shadow: 0 30px 60px rgba(0,0,0,0.06);
             width: 95vw;
@@ -48,12 +48,26 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 25px;
+            margin-bottom: clamp(12px, 3vw, 25px);
             padding: 0 10px;
         }
 
-        .brand { font-weight: 900; font-size: 1.1rem; color: var(--oxide); font-style: italic; letter-spacing: -0.5px; }
-        #status { font-family: 'JetBrains Mono'; font-size: 9px; font-weight: 800; color: var(--oxide); letter-spacing: 1px; transition: all 0.3s; }
+        .brand {
+            font-weight: 900;
+            font-size: clamp(0.7rem, 2.5vw, 1.1rem);
+            color: var(--oxide);
+            font-style: italic;
+            letter-spacing: -0.5px;
+        }
+
+        #status {
+            font-family: 'JetBrains Mono';
+            font-size: clamp(7px, 1.5vw, 9px);
+            font-weight: 800;
+            color: var(--oxide);
+            letter-spacing: 1px;
+            transition: all 0.3s;
+        }
 
         .display-container {
             width: 100%;
@@ -61,13 +75,13 @@
             border-radius: 24px;
             overflow: hidden;
             box-shadow: 0 20px 40px rgba(0,0,0,0.12);
-            margin-bottom: 35px;
+            margin-bottom: clamp(16px, 4vw, 35px);
         }
 
-        canvas { 
-            width: 100%; 
+        canvas {
+            width: 100%;
             aspect-ratio: 160 / 144;
-            image-rendering: pixelated; 
+            image-rendering: pixelated;
             display: block;
         }
 
@@ -76,13 +90,27 @@
             width: 100%;
             justify-content: space-between;
             align-items: center;
-            padding: 0 10px;
-            margin-bottom: 40px;
+            padding: 0 clamp(4px, 2vw, 10px);
+            margin-bottom: clamp(16px, 4vw, 40px);
         }
 
-        .dpad { display: grid; grid-template-areas: ". u ." "l . r" ". d ."; gap: 10px; }
-        .center-group { display: flex; flex-direction: column; gap: 8px; transform: translateY(12px); }
-        .action-group { display: flex; gap: 18px; }
+        .dpad {
+            display: grid;
+            grid-template-areas: ". u ." "l . r" ". d .";
+            gap: clamp(4px, 1.5vw, 10px);
+        }
+
+        .center-group {
+            display: flex;
+            flex-direction: column;
+            gap: clamp(4px, 1.5vw, 8px);
+            transform: translateY(12px);
+        }
+
+        .action-group {
+            display: flex;
+            gap: clamp(8px, 3vw, 18px);
+        }
 
         .ctrl-btn {
             background: var(--btn-dark);
@@ -97,9 +125,27 @@
             transition: all 0.08s ease;
         }
 
-        .sq { width: 50px; height: 50px; border-radius: 14px; font-size: 18px; }
-        .round { width: 68px; height: 68px; border-radius: 50%; font-size: 22px; }
-        .pill { width: 60px; height: 22px; border-radius: 20px; font-size: 8px; box-shadow: 0 3px 0 #000; }
+        .sq {
+            width:  clamp(32px, 8vw, 50px);
+            height: clamp(32px, 8vw, 50px);
+            border-radius: clamp(8px, 2vw, 14px);
+            font-size: clamp(12px, 3vw, 18px);
+        }
+
+        .round {
+            width:  clamp(44px, 11vw, 68px);
+            height: clamp(44px, 11vw, 68px);
+            border-radius: 50%;
+            font-size: clamp(14px, 4vw, 22px);
+        }
+
+        .pill {
+            width:  clamp(40px, 10vw, 60px);
+            height: clamp(16px, 4vw, 22px);
+            border-radius: 20px;
+            font-size: clamp(6px, 1.5vw, 8px);
+            box-shadow: 0 3px 0 #000;
+        }
 
         .ctrl-btn.active, .ctrl-btn:active {
             background: var(--oxide);
@@ -107,23 +153,34 @@
             box-shadow: 0 2px 0 #000;
         }
 
-        .footer-tools { 
-            display: grid; 
-            grid-template-columns: 1fr 1fr; 
-            gap: 12px; 
-            width: 100%; 
+        .footer-tools {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: clamp(6px, 2vw, 12px);
+            width: 100%;
         }
-        
+
         .sys-btn {
-            background: var(--btn-dark); color: white; border: none;
-            padding: 14px; border-radius: 14px; font-weight: 700;
-            font-size: 9px; font-family: 'JetBrains Mono'; cursor: pointer;
+            background: var(--btn-dark);
+            color: white;
+            border: none;
+            padding: clamp(10px, 2.5vw, 14px);
+            border-radius: 14px;
+            font-weight: 700;
+            font-size: clamp(7px, 1.5vw, 9px);
+            font-family: 'JetBrains Mono';
+            cursor: pointer;
             transition: all 0.2s;
             text-align: center;
         }
-        .btn-sec { background: white; color: var(--text-main); border: 1px solid var(--border-light); }
-        .hidden { display: none; }
 
+        .btn-sec {
+            background: white;
+            color: var(--text-main);
+            border: 1px solid var(--border-light);
+        }
+
+        .hidden { display: none; }
     </style>
 </head>
 <body>
@@ -140,14 +197,14 @@
 
         <div class="controls-layout">
             <div class="dpad">
-                <div id="btn-arrowup" class="ctrl-btn sq" style="grid-area: u" ontouchstart="handleTouch('arrowup', true)" ontouchend="handleTouch('arrowup', false)">↑</div>
-                <div id="btn-arrowleft" class="ctrl-btn sq" style="grid-area: l" ontouchstart="handleTouch('arrowleft', true)" ontouchend="handleTouch('arrowleft', false)">←</div>
-                <div id="btn-arrowright" class="ctrl-btn sq" style="grid-area: r" ontouchstart="handleTouch('arrowright', true)" ontouchend="handleTouch('arrowright', false)">→</div>
-                <div id="btn-arrowdown" class="ctrl-btn sq" style="grid-area: d" ontouchstart="handleTouch('arrowdown', true)" ontouchend="handleTouch('arrowdown', false)">↓</div>
+                <div id="btn-arrowup"    class="ctrl-btn sq" style="grid-area:u" ontouchstart="handleTouch('arrowup',    true)" ontouchend="handleTouch('arrowup',    false)">↑</div>
+                <div id="btn-arrowleft"  class="ctrl-btn sq" style="grid-area:l" ontouchstart="handleTouch('arrowleft',  true)" ontouchend="handleTouch('arrowleft',  false)">←</div>
+                <div id="btn-arrowright" class="ctrl-btn sq" style="grid-area:r" ontouchstart="handleTouch('arrowright', true)" ontouchend="handleTouch('arrowright', false)">→</div>
+                <div id="btn-arrowdown"  class="ctrl-btn sq" style="grid-area:d" ontouchstart="handleTouch('arrowdown',  true)" ontouchend="handleTouch('arrowdown',  false)">↓</div>
             </div>
 
             <div class="center-group">
-                <div id="btn-s" class="ctrl-btn pill" ontouchstart="handleTouch('s', true)" ontouchend="handleTouch('s', false)">SELECT</div>
+                <div id="btn-s"     class="ctrl-btn pill" ontouchstart="handleTouch('s',     true)" ontouchend="handleTouch('s',     false)">SELECT</div>
                 <div id="btn-enter" class="ctrl-btn pill" ontouchstart="handleTouch('enter', true)" ontouchend="handleTouch('enter', false)">START</div>
             </div>
 
@@ -160,11 +217,11 @@
         <div class="footer-tools">
             <input type="file" id="rom-upload" class="hidden" accept=".gb">
             <input type="file" id="sav-upload" class="hidden" accept=".sav">
-            
+
             <button class="sys-btn" onclick="document.getElementById('rom-upload').click()">LOAD ROM</button>
             <button class="sys-btn" onclick="exportSram()">EXPORT .SAV</button>
             <button class="sys-btn btn-sec" onclick="document.getElementById('sav-upload').click()">IMPORT .SAV</button>
-            <button class="sys-btn btn-sec" onclick="clearStorage()" style="color: #ff3b30;">WIPE ALL</button>
+            <button class="sys-btn btn-sec" onclick="clearStorage()" style="color:#ff3b30;">WIPE ALL</button>
         </div>
     </div>
 
@@ -172,8 +229,11 @@
         import init, { EmulatorState } from './pkg/pokegameboy.js';
 
         let emu, wasm_mem;
-        let dpad = 0x0F;    
-        let buttons = 0x0F; 
+        let dpad       = 0x0F;
+        let buttons    = 0x0F;
+        let saveLoaded = false;
+        let frameCount = 0;
+        const SAVE_INJECT_FRAME = 10;
         const statusEl = document.getElementById('status');
 
         const keyMap = {
@@ -181,11 +241,38 @@
             "arrowup":    { type: "d", bit: 0x04 },
             "arrowleft":  { type: "d", bit: 0x02 },
             "arrowright": { type: "d", bit: 0x01 },
-            "enter":      { type: "b", bit: 0x08 }, 
-            "s":          { type: "b", bit: 0x04 }, 
-            "b":          { type: "b", bit: 0x02 }, 
-            "a":          { type: "b", bit: 0x01 }  
+            "enter":      { type: "b", bit: 0x08 },
+            "s":          { type: "b", bit: 0x04 },
+            "b":          { type: "b", bit: 0x02 },
+            "a":          { type: "b", bit: 0x01 }
         };
+
+        // ── helpers ──────────────────────────────────────────────
+
+        function persistSave() {
+            if (!emu) return false;
+            const saveBytes = emu.save_wasm();
+            const hasData = saveBytes && saveBytes.length > 0
+                && saveBytes.some(b => b !== 0);
+            if (hasData) {
+                localStorage.setItem('auto_save_sram',
+                    JSON.stringify(Array.from(saveBytes)));
+            }
+            return hasData;
+        }
+
+        function showStatus(msg, color, duration = 1200) {
+            statusEl.innerText   = msg;
+            statusEl.style.color = color || '';
+            if (duration) {
+                setTimeout(() => {
+                    statusEl.innerText   = "LIVE";
+                    statusEl.style.color = '';
+                }, duration);
+            }
+        }
+
+        // ── boot ─────────────────────────────────────────────────
 
         async function setup() {
             try {
@@ -198,126 +285,173 @@
                 } else {
                     statusEl.innerText = "WAITING FOR CARTRIDGE";
                 }
-            } catch (err) { statusEl.innerText = "INIT ERROR"; }
+            } catch (err) {
+                console.error(err);
+                statusEl.innerText = "INIT ERROR";
+            }
         }
 
         function startEmulator(bytes) {
             try {
-                emu = new EmulatorState(bytes);
+                emu        = new EmulatorState(bytes);
+                saveLoaded = false;
+                frameCount = 0;
+                statusEl.innerText = "BOOTING...";
 
-                // --- Persistence: Load Auto-Save ---
-                const autoSave = localStorage.getItem('auto_save_sram');
-                if (autoSave) {
-                    const sramBytes = new Uint8Array(JSON.parse(autoSave));
-                    emu.load_save_wasm(sramBytes);
-                    console.log("SRAM Restored from LocalStorage");
-                }
-
-                statusEl.innerText = "LIVE";
                 const ctx = document.getElementById('screen').getContext('2d');
-                
+
                 function frame() {
                     emu.tick_frame();
-                    const ptr = emu.framebuffer_ptr();
+                    frameCount++;
+
+                    // inject save after game boot init — MBC RAM enable
+                    // happens in the first few frames of the game's own code
+                    if (!saveLoaded && frameCount >= SAVE_INJECT_FRAME) {
+                        const stored = localStorage.getItem('auto_save_sram');
+                        if (stored) {
+                            try {
+                                const sramBytes = new Uint8Array(JSON.parse(stored));
+                                emu.load_save_wasm(sramBytes);
+                                console.log(`SRAM injected at frame ${frameCount} (${sramBytes.length} bytes)`);
+                            } catch(e) {
+                                console.warn("SRAM restore failed:", e);
+                            }
+                        }
+                        saveLoaded = true;
+                        statusEl.innerText = "LIVE";
+                    }
+
+                    const ptr    = emu.framebuffer_ptr();
                     const pixels = new Uint8ClampedArray(wasm_mem.buffer, ptr, 160 * 144 * 4);
                     ctx.putImageData(new ImageData(pixels, 160, 144), 0, 0);
                     requestAnimationFrame(frame);
                 }
                 requestAnimationFrame(frame);
 
-                // --- Persistence: Auto-Save Interval (30s) ---
+                // auto-save every 5 s
                 setInterval(() => {
-                    if (emu) {
-                        const saveBytes = emu.save_wasm();
-                        if (saveBytes && saveBytes.length > 0) {
-                            localStorage.setItem('auto_save_sram', JSON.stringify(Array.from(saveBytes)));
-                            // Visual feedback for auto-save
-                            const oldText = statusEl.innerText;
-                            statusEl.innerText = "SYNCED";
-                            statusEl.style.color = "#4cd964"; 
-                            setTimeout(() => {
-                                statusEl.innerText = "LIVE";
-                                statusEl.style.color = "";
-                            }, 1000);
-                        }
-                    }
+                    if (persistSave()) showStatus("SYNCED", "#4cd964");
                 }, 5000);
 
-            } catch (err) { statusEl.innerText = "HARDWARE FAULT"; }
+            } catch (err) {
+                console.error(err);
+                statusEl.innerText = "HARDWARE FAULT";
+            }
         }
+
+        // ── joypad ───────────────────────────────────────────────
 
         function updateJoypadState(keyName, isDown) {
             const config = keyMap[keyName];
             if (!config || !emu) return;
-
             const btn = document.getElementById(`btn-${keyName}`);
             if (btn) isDown ? btn.classList.add('active') : btn.classList.remove('active');
-
             if (config.type === "d") {
-                isDown ? dpad &= ~config.bit : dpad |= config.bit;
+                isDown ? dpad    &= ~config.bit : dpad    |= config.bit;
             } else {
                 isDown ? buttons &= ~config.bit : buttons |= config.bit;
             }
             emu.update_joypad(dpad, buttons);
         }
 
-        window.exportSram = () => {
+        // ── export .sav — Firefox + Chrome + Safari ───────────────
+        // Key rule: the synchronous fallback path (Firefox/Safari) must
+        // not have any await before link.click() or the browser blocks it.
+        // We handle Chrome/Edge via showSaveFilePicker (fully async, fine).
+
+        window.exportSram = async () => {
             if (!emu) return;
             const saveBytes = emu.save_wasm();
-            if (saveBytes && saveBytes.length > 0) {
-                // Ensure LocalStorage is also up to date
-                localStorage.setItem('auto_save_sram', JSON.stringify(Array.from(saveBytes)));
-                
-                const blob = new Blob([new Uint8Array(saveBytes)], { type: 'application/octet-stream' });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = 'trainer_save.sav';
-                link.click();
-                URL.revokeObjectURL(url);
-                statusEl.innerText = "SAV FILE EXPORTED";
-                setTimeout(() => statusEl.innerText = "LIVE", 1500);
+            if (!saveBytes || saveBytes.length === 0) {
+                showStatus("NO SAVE DATA", "#ff3b30");
+                return;
             }
+
+            localStorage.setItem('auto_save_sram',
+                JSON.stringify(Array.from(saveBytes)));
+
+            const blob = new Blob([new Uint8Array(saveBytes)],
+                { type: 'application/octet-stream' });
+
+            // Chrome / Edge 86+ — native save dialog
+            if (window.showSaveFilePicker) {
+                try {
+                    const handle = await window.showSaveFilePicker({
+                        suggestedName: 'trainer_save.sav',
+                        types: [{
+                            description: 'Game Boy Save File',
+                            accept: { 'application/octet-stream': ['.sav'] }
+                        }]
+                    });
+                    const writable = await handle.createWritable();
+                    await writable.write(blob);
+                    await writable.close();
+                    showStatus("SAV EXPORTED", "#4cd964");
+                    return;
+                } catch (e) {
+                    if (e.name === 'AbortError') return; // user cancelled
+                    // fall through to legacy path
+                }
+            }
+
+            // Firefox / Safari — synchronous, must stay sync from here
+            const url  = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href     = url;
+            link.download = 'trainer_save.sav';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            showStatus("SAV EXPORTED", "#4cd964");
         };
+
+        // ── import .sav ───────────────────────────────────────────
 
         document.getElementById('sav-upload').onchange = async (e) => {
             if (!emu) return;
-            const file = e.target.files[0];
+            const file  = e.target.files[0];
             const bytes = new Uint8Array(await file.arrayBuffer());
-            emu.load_save_wasm(bytes); 
-            localStorage.setItem('auto_save_sram', JSON.stringify(Array.from(bytes)));
-            statusEl.innerText = "SAV INJECTED";
-            setTimeout(() => statusEl.innerText = "LIVE", 1500);
+            emu.load_save_wasm(bytes);
+            localStorage.setItem('auto_save_sram',
+                JSON.stringify(Array.from(bytes)));
+            showStatus("SAV INJECTED", "#4cd964");
         };
+
+        document.getElementById('rom-upload').onchange = async (e) => {
+            const bytes = new Uint8Array(await e.target.files[0].arrayBuffer());
+            localStorage.setItem('stored_rom',
+                JSON.stringify(Array.from(bytes)));
+            startEmulator(bytes);
+        };
+
+        // ── save on close ─────────────────────────────────────────
+
+        window.addEventListener('beforeunload', () => persistSave());
+        window.addEventListener('pagehide',     () => persistSave()); // iOS Safari
+
+        // ── keyboard ──────────────────────────────────────────────
 
         window.addEventListener("keydown", (e) => {
             const key = e.key.toLowerCase();
-            if (keyMap[key]) {
-                e.preventDefault();
-                updateJoypadState(key, true);
-            }
+            if (keyMap[key]) { e.preventDefault(); updateJoypadState(key, true); }
         });
-
         window.addEventListener("keyup", (e) => {
             const key = e.key.toLowerCase();
             if (keyMap[key]) updateJoypadState(key, false);
         });
 
+        // ── misc ──────────────────────────────────────────────────
+
         window.handleTouch = (keyName, isDown) => updateJoypadState(keyName, isDown);
 
-        document.getElementById('rom-upload').onchange = async (e) => {
-            const bytes = new Uint8Array(await e.target.files[0].arrayBuffer());
-            localStorage.setItem('stored_rom', JSON.stringify(Array.from(bytes)));
-            startEmulator(bytes);
-        };
-
-        window.clearStorage = () => { 
-            if(confirm("Confirm: Wipe all ROM and progress data?")) {
-                localStorage.clear(); 
-                location.reload(); 
+        window.clearStorage = () => {
+            if (confirm("Confirm: Wipe all ROM and progress data?")) {
+                localStorage.clear();
+                location.reload();
             }
         };
-        
+
         setup();
     </script>
 </body>
