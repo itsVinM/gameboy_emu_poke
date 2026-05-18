@@ -3,17 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>🦀 RUST GAMEBOY - LR35902 RUNTIME</title>
+    <title>🦀 RUST GAMEBOY</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg: #f5f5f7;
-            --surface: #ffffff;
-            --oxide: #f9612e;
-            --btn-dark: #2c2c2e;
-            --text-main: #1d1d1f;
-            --text-muted: #86868b;
+            --bg:           #f5f5f7;
+            --surface:      #ffffff;
+            --oxide:        #f9612e;
+            --btn-dark:     #2c2c2e;
+            --text-main:    #1d1d1f;
+            --text-muted:   #86868b;
             --border-light: #e5e5e7;
+            --dbg-bg:       #1a1a1e;
+            --dbg-border:   #3a3a3e;
+            --dbg-text:     #e0e0e0;
+            --dbg-label:    #86868b;
+            --dbg-green:    #4cd964;
+            --dbg-yellow:   #ffd60a;
+            --dbg-red:      #ff3b30;
+            --dbg-blue:     #0a84ff;
         }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
@@ -28,9 +36,9 @@
             align-items: center;
             justify-content: center;
             touch-action: none;
-            overflow: hidden;
         }
 
+        /* ── main console card ── */
         .console-card {
             background: var(--surface);
             padding: clamp(16px, 4vw, 40px) clamp(12px, 3vw, 30px);
@@ -60,6 +68,8 @@
             letter-spacing: -0.5px;
         }
 
+        .header-right { display: flex; align-items: center; gap: 10px; }
+
         #status {
             font-family: 'JetBrains Mono';
             font-size: clamp(7px, 1.5vw, 9px);
@@ -69,6 +79,23 @@
             transition: all 0.3s;
         }
 
+        #dbg-toggle {
+            background: var(--btn-dark);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 5px 10px;
+            font-size: 11px;
+            font-family: 'JetBrains Mono';
+            font-weight: 700;
+            cursor: pointer;
+            letter-spacing: 0.5px;
+            transition: background 0.15s;
+        }
+        #dbg-toggle:hover { background: var(--oxide); }
+        #dbg-toggle.active { background: var(--oxide); }
+
+        /* ── screen ── */
         .display-container {
             width: 100%;
             background: #000;
@@ -76,6 +103,7 @@
             overflow: hidden;
             box-shadow: 0 20px 40px rgba(0,0,0,0.12);
             margin-bottom: clamp(16px, 4vw, 35px);
+            position: relative;
         }
 
         canvas {
@@ -85,6 +113,102 @@
             display: block;
         }
 
+        /* ── debugger panel (inside the card, below the screen) ── */
+        #debug-panel {
+            width: 100%;
+            background: var(--dbg-bg);
+            border-radius: 18px;
+            font-family: 'JetBrains Mono';
+            font-size: clamp(9px, 2vw, 11px);
+            color: var(--dbg-text);
+            padding: 14px 16px;
+            margin-bottom: clamp(12px, 3vw, 20px);
+            display: none;
+        }
+        #debug-panel.visible { display: block; }
+
+        .dbg-section {
+            margin-bottom: 10px;
+        }
+        .dbg-section:last-child { margin-bottom: 0; }
+
+        .dbg-title {
+            color: var(--dbg-label);
+            font-size: 9px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .dbg-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 4px 8px;
+        }
+
+        .dbg-cell { display: flex; flex-direction: column; gap: 1px; }
+        .dbg-cell .lbl { color: var(--dbg-label); font-size: 8px; letter-spacing: 0.5px; }
+        .dbg-cell .val { color: var(--dbg-green); font-weight: 700; font-size: clamp(9px, 2vw, 12px); }
+
+        .dbg-flags {
+            display: flex;
+            gap: 8px;
+        }
+        .flag-bit {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1px;
+        }
+        .flag-bit .lbl { color: var(--dbg-label); font-size: 8px; }
+        .flag-bit .val { font-weight: 700; font-size: 13px; }
+        .flag-bit .val.on  { color: var(--dbg-green); }
+        .flag-bit .val.off { color: #444; }
+
+        .dbg-sys {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 4px 8px;
+        }
+
+        .dbg-divider {
+            height: 1px;
+            background: var(--dbg-border);
+            margin: 8px 0;
+        }
+
+        .dbg-controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .dbg-btn {
+            background: #2c2c2e;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 6px 14px;
+            font-family: 'JetBrains Mono';
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: background 0.1s;
+        }
+        .dbg-btn:hover  { background: #444; }
+        .dbg-btn.pause  { background: var(--dbg-yellow); color: #000; }
+        .dbg-btn.resume { background: var(--dbg-green);  color: #000; }
+        .dbg-btn.step   { background: var(--dbg-blue); }
+        .dbg-btn:disabled { opacity: 0.3; cursor: default; }
+
+        #dbg-frame-count {
+            margin-left: auto;
+            color: var(--dbg-label);
+            font-size: 9px;
+        }
+
+        /* ── d-pad + action buttons ── */
         .controls-layout {
             display: flex;
             width: 100%;
@@ -107,10 +231,7 @@
             transform: translateY(12px);
         }
 
-        .action-group {
-            display: flex;
-            gap: clamp(8px, 3vw, 18px);
-        }
+        .action-group { display: flex; gap: clamp(8px, 3vw, 18px); }
 
         .ctrl-btn {
             background: var(--btn-dark);
@@ -124,42 +245,32 @@
             box-shadow: 0 6px 0 #000;
             transition: all 0.08s ease;
         }
-
         .sq {
-            width:  clamp(32px, 8vw, 50px);
-            height: clamp(32px, 8vw, 50px);
-            border-radius: clamp(8px, 2vw, 14px);
-            font-size: clamp(12px, 3vw, 18px);
+            width: clamp(32px, 8vw, 50px); height: clamp(32px, 8vw, 50px);
+            border-radius: clamp(8px, 2vw, 14px); font-size: clamp(12px, 3vw, 18px);
         }
-
         .round {
-            width:  clamp(44px, 11vw, 68px);
-            height: clamp(44px, 11vw, 68px);
-            border-radius: 50%;
-            font-size: clamp(14px, 4vw, 22px);
+            width: clamp(44px, 11vw, 68px); height: clamp(44px, 11vw, 68px);
+            border-radius: 50%; font-size: clamp(14px, 4vw, 22px);
         }
-
         .pill {
-            width:  clamp(40px, 10vw, 60px);
-            height: clamp(16px, 4vw, 22px);
-            border-radius: 20px;
-            font-size: clamp(6px, 1.5vw, 8px);
+            width: clamp(40px, 10vw, 60px); height: clamp(16px, 4vw, 22px);
+            border-radius: 20px; font-size: clamp(6px, 1.5vw, 8px);
             box-shadow: 0 3px 0 #000;
         }
-
         .ctrl-btn.active, .ctrl-btn:active {
             background: var(--oxide);
             transform: translateY(3px);
             box-shadow: 0 2px 0 #000;
         }
 
+        /* ── footer tools ── */
         .footer-tools {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: clamp(6px, 2vw, 12px);
             width: 100%;
         }
-
         .sys-btn {
             background: var(--btn-dark);
             color: white;
@@ -173,7 +284,6 @@
             transition: all 0.2s;
             text-align: center;
         }
-
         .btn-sec {
             background: white;
             color: var(--text-main);
@@ -185,274 +295,337 @@
 </head>
 <body>
 
-    <div class="console-card">
-        <div class="header-meta">
-            <div class="brand">🦀 RUST GAMEBOY - LR35902 RUNTIME</div>
+<div class="console-card">
+    <div class="header-meta">
+        <div class="brand">🦀 RUST GAMEBOY</div>
+        <div class="header-right">
             <div id="status">HARDWARE STANDBY</div>
-        </div>
-
-        <div class="display-container">
-            <canvas id="screen" width="160" height="144"></canvas>
-        </div>
-
-        <div class="controls-layout">
-            <div class="dpad">
-                <div id="btn-arrowup"    class="ctrl-btn sq" style="grid-area:u" ontouchstart="handleTouch('arrowup',    true)" ontouchend="handleTouch('arrowup',    false)">↑</div>
-                <div id="btn-arrowleft"  class="ctrl-btn sq" style="grid-area:l" ontouchstart="handleTouch('arrowleft',  true)" ontouchend="handleTouch('arrowleft',  false)">←</div>
-                <div id="btn-arrowright" class="ctrl-btn sq" style="grid-area:r" ontouchstart="handleTouch('arrowright', true)" ontouchend="handleTouch('arrowright', false)">→</div>
-                <div id="btn-arrowdown"  class="ctrl-btn sq" style="grid-area:d" ontouchstart="handleTouch('arrowdown',  true)" ontouchend="handleTouch('arrowdown',  false)">↓</div>
-            </div>
-
-            <div class="center-group">
-                <div id="btn-s"     class="ctrl-btn pill" ontouchstart="handleTouch('s',     true)" ontouchend="handleTouch('s',     false)">SELECT</div>
-                <div id="btn-enter" class="ctrl-btn pill" ontouchstart="handleTouch('enter', true)" ontouchend="handleTouch('enter', false)">START</div>
-            </div>
-
-            <div class="action-group">
-                <div id="btn-b" class="ctrl-btn round" ontouchstart="handleTouch('b', true)" ontouchend="handleTouch('b', false)">B</div>
-                <div id="btn-a" class="ctrl-btn round" ontouchstart="handleTouch('a', true)" ontouchend="handleTouch('a', false)">A</div>
-            </div>
-        </div>
-
-        <div class="footer-tools">
-            <input type="file" id="rom-upload" class="hidden" accept=".gb">
-            <input type="file" id="sav-upload" class="hidden" accept=".sav">
-
-            <button class="sys-btn" onclick="document.getElementById('rom-upload').click()">LOAD ROM</button>
-            <button class="sys-btn" onclick="exportSram()">EXPORT .SAV</button>
-            <button class="sys-btn btn-sec" onclick="document.getElementById('sav-upload').click()">IMPORT .SAV</button>
-            <button class="sys-btn btn-sec" onclick="clearStorage()" style="color:#ff3b30;">WIPE ALL</button>
+            <button id="dbg-toggle" onclick="toggleDebug()">DBG</button>
         </div>
     </div>
 
-    <script type="module">
-        import init, { EmulatorState } from './pkg/pokegameboy.js';
+    <div class="display-container">
+        <canvas id="screen" width="160" height="144"></canvas>
+    </div>
 
-        let emu, wasm_mem;
-        let dpad       = 0x0F;
-        let buttons    = 0x0F;
-        let saveLoaded = false;
-        let frameCount = 0;
-        const SAVE_INJECT_FRAME = 10;
-        const statusEl = document.getElementById('status');
+    <!-- ── debugger panel ── -->
+    <div id="debug-panel">
+        <div class="dbg-section">
+            <div class="dbg-title">Registers</div>
+            <div class="dbg-grid">
+                <div class="dbg-cell"><span class="lbl">PC</span><span class="val" id="d-pc">----</span></div>
+                <div class="dbg-cell"><span class="lbl">SP</span><span class="val" id="d-sp">----</span></div>
+                <div class="dbg-cell"><span class="lbl">AF</span><span class="val" id="d-af">----</span></div>
+                <div class="dbg-cell"><span class="lbl">BC</span><span class="val" id="d-bc">----</span></div>
+                <div class="dbg-cell"><span class="lbl">DE</span><span class="val" id="d-de">----</span></div>
+                <div class="dbg-cell"><span class="lbl">HL</span><span class="val" id="d-hl">----</span></div>
+            </div>
+        </div>
 
-        const keyMap = {
-            "arrowdown":  { type: "d", bit: 0x08 },
-            "arrowup":    { type: "d", bit: 0x04 },
-            "arrowleft":  { type: "d", bit: 0x02 },
-            "arrowright": { type: "d", bit: 0x01 },
-            "enter":      { type: "b", bit: 0x08 },
-            "s":          { type: "b", bit: 0x04 },
-            "b":          { type: "b", bit: 0x02 },
-            "a":          { type: "b", bit: 0x01 }
-        };
+        <div class="dbg-divider"></div>
 
-        // ── helpers ──────────────────────────────────────────────
+        <div class="dbg-section">
+            <div class="dbg-title">Flags</div>
+            <div class="dbg-flags">
+                <div class="flag-bit"><span class="lbl">Z</span><span class="val" id="f-z">0</span></div>
+                <div class="flag-bit"><span class="lbl">N</span><span class="val" id="f-n">0</span></div>
+                <div class="flag-bit"><span class="lbl">H</span><span class="val" id="f-h">0</span></div>
+                <div class="flag-bit"><span class="lbl">C</span><span class="val" id="f-c">0</span></div>
+                <div class="flag-bit" style="margin-left:12px"><span class="lbl">IME</span><span class="val" id="f-ime">0</span></div>
+                <div class="flag-bit"><span class="lbl">HALT</span><span class="val" id="f-halt">0</span></div>
+            </div>
+        </div>
 
-        function persistSave() {
-            if (!emu) return false;
-            const saveBytes = emu.save_wasm();
-            const hasData = saveBytes && saveBytes.length > 0
-                && saveBytes.some(b => b !== 0);
-            if (hasData) {
-                localStorage.setItem('auto_save_sram',
-                    JSON.stringify(Array.from(saveBytes)));
-            }
-            return hasData;
-        }
+        <div class="dbg-divider"></div>
 
-        function showStatus(msg, color, duration = 1200) {
-            statusEl.innerText   = msg;
-            statusEl.style.color = color || '';
-            if (duration) {
-                setTimeout(() => {
-                    statusEl.innerText   = "LIVE";
-                    statusEl.style.color = '';
-                }, duration);
-            }
-        }
+        <div class="dbg-section">
+            <div class="dbg-title">System</div>
+            <div class="dbg-sys">
+                <div class="dbg-cell"><span class="lbl">LY</span><span class="val" id="d-ly">--</span></div>
+                <div class="dbg-cell"><span class="lbl">LCDC</span><span class="val" id="d-lcdc">--</span></div>
+                <div class="dbg-cell"><span class="lbl">STAT</span><span class="val" id="d-stat">--</span></div>
+                <div class="dbg-cell"><span class="lbl">IF</span><span class="val" id="d-if">--</span></div>
+                <div class="dbg-cell"><span class="lbl">IE</span><span class="val" id="d-ie">--</span></div>
+            </div>
+        </div>
 
-        // ── boot ─────────────────────────────────────────────────
+        <div class="dbg-divider"></div>
 
-        async function setup() {
-            try {
-                const wasm = await init();
-                wasm_mem = wasm.memory;
-                const savedRom = localStorage.getItem('stored_rom');
-                if (savedRom) {
-                    statusEl.innerText = "RESUMING SYSTEM...";
-                    startEmulator(new Uint8Array(JSON.parse(savedRom)));
-                } else {
-                    statusEl.innerText = "WAITING FOR CARTRIDGE";
-                }
-            } catch (err) {
-                console.error(err);
-                statusEl.innerText = "INIT ERROR";
-            }
-        }
+        <div class="dbg-section">
+            <div class="dbg-controls">
+                <button class="dbg-btn pause"  id="btn-pause"  onclick="dbgPause()">PAUSE</button>
+                <button class="dbg-btn resume" id="btn-resume" onclick="dbgResume()" disabled>RESUME</button>
+                <button class="dbg-btn step"   id="btn-step"   onclick="dbgStep()"  disabled>STEP</button>
+                <span id="dbg-frame-count">frame 0</span>
+            </div>
+        </div>
+    </div>
 
-        function startEmulator(bytes) {
-            try {
-                emu        = new EmulatorState(bytes);
-                saveLoaded = false;
-                frameCount = 0;
-                statusEl.innerText = "BOOTING...";
+    <!-- ── controls ── -->
+    <div class="controls-layout">
+        <div class="dpad">
+            <div id="btn-arrowup"    class="ctrl-btn sq" style="grid-area:u" ontouchstart="handleTouch('arrowup',true)"    ontouchend="handleTouch('arrowup',false)">↑</div>
+            <div id="btn-arrowleft"  class="ctrl-btn sq" style="grid-area:l" ontouchstart="handleTouch('arrowleft',true)"  ontouchend="handleTouch('arrowleft',false)">←</div>
+            <div id="btn-arrowright" class="ctrl-btn sq" style="grid-area:r" ontouchstart="handleTouch('arrowright',true)" ontouchend="handleTouch('arrowright',false)">→</div>
+            <div id="btn-arrowdown"  class="ctrl-btn sq" style="grid-area:d" ontouchstart="handleTouch('arrowdown',true)"  ontouchend="handleTouch('arrowdown',false)">↓</div>
+        </div>
+        <div class="center-group">
+            <div id="btn-s"     class="ctrl-btn pill" ontouchstart="handleTouch('s',true)"     ontouchend="handleTouch('s',false)">SELECT</div>
+            <div id="btn-enter" class="ctrl-btn pill" ontouchstart="handleTouch('enter',true)" ontouchend="handleTouch('enter',false)">START</div>
+        </div>
+        <div class="action-group">
+            <div id="btn-b" class="ctrl-btn round" ontouchstart="handleTouch('b',true)" ontouchend="handleTouch('b',false)">B</div>
+            <div id="btn-a" class="ctrl-btn round" ontouchstart="handleTouch('a',true)" ontouchend="handleTouch('a',false)">A</div>
+        </div>
+    </div>
 
-                const ctx = document.getElementById('screen').getContext('2d');
+    <div class="footer-tools">
+        <input type="file" id="rom-upload" class="hidden" accept=".gb">
+        <input type="file" id="sav-upload" class="hidden" accept=".sav">
+        <button class="sys-btn" onclick="document.getElementById('rom-upload').click()">LOAD ROM</button>
+        <button class="sys-btn" onclick="exportSram()">EXPORT .SAV</button>
+        <button class="sys-btn btn-sec" onclick="document.getElementById('sav-upload').click()">IMPORT .SAV</button>
+        <button class="sys-btn btn-sec" onclick="clearStorage()" style="color:#ff3b30;">WIPE ALL</button>
+    </div>
+</div>
 
-                function frame() {
-                    emu.tick_frame();
-                    frameCount++;
+<script type="module">
+    import init, { EmulatorState } from './pkg/pokegameboy.js';
 
-                    // inject save after game boot init — MBC RAM enable
-                    // happens in the first few frames of the game's own code
-                    if (!saveLoaded && frameCount >= SAVE_INJECT_FRAME) {
-                        const stored = localStorage.getItem('auto_save_sram');
-                        if (stored) {
-                            try {
-                                const sramBytes = new Uint8Array(JSON.parse(stored));
-                                emu.load_save_wasm(sramBytes);
-                                console.log(`SRAM injected at frame ${frameCount} (${sramBytes.length} bytes)`);
-                            } catch(e) {
-                                console.warn("SRAM restore failed:", e);
-                            }
-                        }
-                        saveLoaded = true;
-                        statusEl.innerText = "LIVE";
-                    }
+    let emu, wasm_mem;
+    let dpad = 0x0F, buttons = 0x0F;
+    let saveLoaded = false, frameCount = 0;
+    let debugOpen = false;
+    const SAVE_INJECT_FRAME = 10;
+    const statusEl = document.getElementById('status');
 
-                    const ptr    = emu.framebuffer_ptr();
-                    const pixels = new Uint8ClampedArray(wasm_mem.buffer, ptr, 160 * 144 * 4);
-                    ctx.putImageData(new ImageData(pixels, 160, 144), 0, 0);
-                    requestAnimationFrame(frame);
-                }
-                requestAnimationFrame(frame);
+    const keyMap = {
+        "arrowdown":  { type:"d", bit:0x08 }, "arrowup":    { type:"d", bit:0x04 },
+        "arrowleft":  { type:"d", bit:0x02 }, "arrowright": { type:"d", bit:0x01 },
+        "enter":      { type:"b", bit:0x08 }, "s":          { type:"b", bit:0x04 },
+        "b":          { type:"b", bit:0x02 }, "a":          { type:"b", bit:0x01 },
+    };
 
-                // auto-save every 5 s
-                setInterval(() => {
-                    if (persistSave()) showStatus("SYNCED", "#4cd964");
-                }, 5000);
+    // ── debug panel ───────────────────────────────────────────────────────────
 
-            } catch (err) {
-                console.error(err);
-                statusEl.innerText = "HARDWARE FAULT";
-            }
-        }
+    window.toggleDebug = () => {
+        debugOpen = !debugOpen;
+        document.getElementById('debug-panel').classList.toggle('visible', debugOpen);
+        document.getElementById('dbg-toggle').classList.toggle('active', debugOpen);
+        if (debugOpen && emu) refreshDebug();
+    };
 
-        // ── joypad ───────────────────────────────────────────────
+    function h8(v)  { return v.toString(16).padStart(2,'0').toUpperCase(); }
+    function h16(v) { return v.toString(16).padStart(4,'0').toUpperCase(); }
 
-        function updateJoypadState(keyName, isDown) {
-            const config = keyMap[keyName];
-            if (!config || !emu) return;
-            const btn = document.getElementById(`btn-${keyName}`);
-            if (btn) isDown ? btn.classList.add('active') : btn.classList.remove('active');
-            if (config.type === "d") {
-                isDown ? dpad    &= ~config.bit : dpad    |= config.bit;
+    function refreshDebug() {
+        if (!emu || !debugOpen) return;
+        document.getElementById('d-pc').textContent = h16(emu.pc());
+        document.getElementById('d-sp').textContent = h16(emu.sp());
+        document.getElementById('d-af').textContent = h16(emu.af());
+        document.getElementById('d-bc').textContent = h16(emu.bc());
+        document.getElementById('d-de').textContent = h16(emu.de());
+        document.getElementById('d-hl').textContent = h16(emu.hl());
+
+        const f = emu.flags();
+        setFlag('f-z', f & 0x80);
+        setFlag('f-n', f & 0x40);
+        setFlag('f-h', f & 0x20);
+        setFlag('f-c', f & 0x10);
+        setFlag('f-ime',  emu.ime()    ? 1 : 0);
+        setFlag('f-halt', emu.halted() ? 1 : 0);
+
+        document.getElementById('d-ly').textContent   = h8(emu.ly());
+        document.getElementById('d-lcdc').textContent = h8(emu.lcdc());
+        document.getElementById('d-stat').textContent = h8(emu.stat());
+        document.getElementById('d-if').textContent   = h8(emu.if_reg());
+        document.getElementById('d-ie').textContent   = h8(emu.ie_reg());
+
+        document.getElementById('dbg-frame-count').textContent = `frame ${emu.frames()}`;
+    }
+
+    function setFlag(id, val) {
+        const el = document.getElementById(id);
+        el.textContent = val ? '1' : '0';
+        el.className = 'val ' + (val ? 'on' : 'off');
+    }
+
+    window.dbgPause = () => {
+        if (!emu) return;
+        emu.set_paused(true);
+        document.getElementById('btn-pause').disabled  = true;
+        document.getElementById('btn-resume').disabled = false;
+        document.getElementById('btn-step').disabled   = false;
+        showStatus("PAUSED", "#ffd60a", 0);
+        refreshDebug();
+    };
+
+    window.dbgResume = () => {
+        if (!emu) return;
+        emu.set_paused(false);
+        document.getElementById('btn-pause').disabled  = false;
+        document.getElementById('btn-resume').disabled = true;
+        document.getElementById('btn-step').disabled   = true;
+        showStatus("LIVE", "", 0);
+    };
+
+    window.dbgStep = () => {
+        if (!emu || !emu.is_paused()) return;
+        emu.tick_step();
+        refreshDebug();
+    };
+
+    // ── helpers ───────────────────────────────────────────────────────────────
+
+    function persistSave() {
+        if (!emu) return false;
+        const saveBytes = emu.save_wasm();
+        const hasData = saveBytes && saveBytes.length > 0 && saveBytes.some(b => b !== 0);
+        if (hasData) localStorage.setItem('auto_save_sram', JSON.stringify(Array.from(saveBytes)));
+        return hasData;
+    }
+
+    function showStatus(msg, color, duration = 1200) {
+        statusEl.innerText   = msg;
+        statusEl.style.color = color || '';
+        if (duration) setTimeout(() => { statusEl.innerText = "LIVE"; statusEl.style.color = ''; }, duration);
+    }
+
+    // ── boot ─────────────────────────────────────────────────────────────────
+
+    async function setup() {
+        try {
+            const wasm = await init();
+            wasm_mem = wasm.memory;
+            const savedRom = localStorage.getItem('stored_rom');
+            if (savedRom) {
+                statusEl.innerText = "RESUMING...";
+                startEmulator(new Uint8Array(JSON.parse(savedRom)));
             } else {
-                isDown ? buttons &= ~config.bit : buttons |= config.bit;
+                statusEl.innerText = "WAITING FOR CARTRIDGE";
             }
-            emu.update_joypad(dpad, buttons);
+        } catch (err) {
+            console.error(err);
+            statusEl.innerText = "INIT ERROR";
         }
+    }
 
-        // ── export .sav — Firefox + Chrome + Safari ───────────────
-        // Key rule: the synchronous fallback path (Firefox/Safari) must
-        // not have any await before link.click() or the browser blocks it.
-        // We handle Chrome/Edge via showSaveFilePicker (fully async, fine).
+    function startEmulator(bytes) {
+        try {
+            emu        = new EmulatorState(bytes);
+            saveLoaded = false;
+            frameCount = 0;
+            statusEl.innerText = "BOOTING...";
 
-        window.exportSram = async () => {
-            if (!emu) return;
-            const saveBytes = emu.save_wasm();
-            if (!saveBytes || saveBytes.length === 0) {
-                showStatus("NO SAVE DATA", "#ff3b30");
-                return;
-            }
+            const ctx = document.getElementById('screen').getContext('2d');
 
-            localStorage.setItem('auto_save_sram',
-                JSON.stringify(Array.from(saveBytes)));
+            function frame() {
+                emu.tick_frame(); // no-op when paused
 
-            const blob = new Blob([new Uint8Array(saveBytes)],
-                { type: 'application/octet-stream' });
-
-            // Chrome / Edge 86+ — native save dialog
-            if (window.showSaveFilePicker) {
-                try {
-                    const handle = await window.showSaveFilePicker({
-                        suggestedName: 'trainer_save.sav',
-                        types: [{
-                            description: 'Game Boy Save File',
-                            accept: { 'application/octet-stream': ['.sav'] }
-                        }]
-                    });
-                    const writable = await handle.createWritable();
-                    await writable.write(blob);
-                    await writable.close();
-                    showStatus("SAV EXPORTED", "#4cd964");
-                    return;
-                } catch (e) {
-                    if (e.name === 'AbortError') return; // user cancelled
-                    // fall through to legacy path
+                frameCount++;
+                if (!saveLoaded && frameCount >= SAVE_INJECT_FRAME) {
+                    const stored = localStorage.getItem('auto_save_sram');
+                    if (stored) {
+                        try { emu.load_save_wasm(new Uint8Array(JSON.parse(stored))); }
+                        catch(e) { console.warn("SRAM restore failed:", e); }
+                    }
+                    saveLoaded = true;
+                    if (!emu.is_paused()) showStatus("LIVE", "", 0);
                 }
+
+                const ptr    = emu.framebuffer_ptr();
+                const pixels = new Uint8ClampedArray(wasm_mem.buffer, ptr, 160 * 144 * 4);
+                ctx.putImageData(new ImageData(pixels, 160, 144), 0, 0);
+
+                if (debugOpen) refreshDebug();
+
+                requestAnimationFrame(frame);
             }
+            requestAnimationFrame(frame);
 
-            // Firefox / Safari — synchronous, must stay sync from here
-            const url  = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href     = url;
-            link.download = 'trainer_save.sav';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
-            showStatus("SAV EXPORTED", "#4cd964");
-        };
+            setInterval(() => { if (persistSave()) showStatus("SYNCED", "#4cd964"); }, 5000);
 
-        // ── import .sav ───────────────────────────────────────────
+        } catch (err) {
+            console.error(err);
+            statusEl.innerText = "HARDWARE FAULT";
+        }
+    }
 
-        document.getElementById('sav-upload').onchange = async (e) => {
-            if (!emu) return;
-            const file  = e.target.files[0];
-            const bytes = new Uint8Array(await file.arrayBuffer());
-            emu.load_save_wasm(bytes);
-            localStorage.setItem('auto_save_sram',
-                JSON.stringify(Array.from(bytes)));
-            showStatus("SAV INJECTED", "#4cd964");
-        };
+    // ── joypad ────────────────────────────────────────────────────────────────
 
-        document.getElementById('rom-upload').onchange = async (e) => {
-            const bytes = new Uint8Array(await e.target.files[0].arrayBuffer());
-            localStorage.setItem('stored_rom',
-                JSON.stringify(Array.from(bytes)));
-            startEmulator(bytes);
-        };
+    function updateJoypadState(keyName, isDown) {
+        const config = keyMap[keyName];
+        if (!config || !emu) return;
+        const btn = document.getElementById(`btn-${keyName}`);
+        if (btn) isDown ? btn.classList.add('active') : btn.classList.remove('active');
+        if (config.type === "d") { isDown ? dpad    &= ~config.bit : dpad    |= config.bit; }
+        else                     { isDown ? buttons &= ~config.bit : buttons |= config.bit; }
+        emu.update_joypad(dpad, buttons);
+    }
 
-        // ── save on close ─────────────────────────────────────────
+    // ── export .sav ───────────────────────────────────────────────────────────
 
-        window.addEventListener('beforeunload', () => persistSave());
-        window.addEventListener('pagehide',     () => persistSave()); // iOS Safari
+    window.exportSram = async () => {
+        if (!emu) return;
+        const saveBytes = emu.save_wasm();
+        if (!saveBytes || saveBytes.length === 0) { showStatus("NO SAVE DATA", "#ff3b30"); return; }
+        localStorage.setItem('auto_save_sram', JSON.stringify(Array.from(saveBytes)));
+        const blob = new Blob([new Uint8Array(saveBytes)], { type: 'application/octet-stream' });
+        if (window.showSaveFilePicker) {
+            try {
+                const handle = await window.showSaveFilePicker({
+                    suggestedName: 'trainer_save.sav',
+                    types: [{ description: 'Game Boy Save', accept: { 'application/octet-stream': ['.sav'] } }]
+                });
+                const w = await handle.createWritable();
+                await w.write(blob); await w.close();
+                showStatus("SAV EXPORTED", "#4cd964"); return;
+            } catch(e) { if (e.name === 'AbortError') return; }
+        }
+        const url = URL.createObjectURL(blob);
+        const a   = Object.assign(document.createElement('a'), { href: url, download: 'trainer_save.sav' });
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        showStatus("SAV EXPORTED", "#4cd964");
+    };
 
-        // ── keyboard ──────────────────────────────────────────────
+    // ── file inputs ───────────────────────────────────────────────────────────
 
-        window.addEventListener("keydown", (e) => {
-            const key = e.key.toLowerCase();
-            if (keyMap[key]) { e.preventDefault(); updateJoypadState(key, true); }
-        });
-        window.addEventListener("keyup", (e) => {
-            const key = e.key.toLowerCase();
-            if (keyMap[key]) updateJoypadState(key, false);
-        });
+    document.getElementById('sav-upload').onchange = async (e) => {
+        if (!emu) return;
+        const bytes = new Uint8Array(await e.target.files[0].arrayBuffer());
+        emu.load_save_wasm(bytes);
+        localStorage.setItem('auto_save_sram', JSON.stringify(Array.from(bytes)));
+        showStatus("SAV INJECTED", "#4cd964");
+    };
 
-        // ── misc ──────────────────────────────────────────────────
+    document.getElementById('rom-upload').onchange = async (e) => {
+        const bytes = new Uint8Array(await e.target.files[0].arrayBuffer());
+        localStorage.setItem('stored_rom', JSON.stringify(Array.from(bytes)));
+        startEmulator(bytes);
+    };
 
-        window.handleTouch = (keyName, isDown) => updateJoypadState(keyName, isDown);
+    // ── lifecycle ─────────────────────────────────────────────────────────────
 
-        window.clearStorage = () => {
-            if (confirm("Confirm: Wipe all ROM and progress data?")) {
-                localStorage.clear();
-                location.reload();
-            }
-        };
+    window.addEventListener('beforeunload', () => persistSave());
+    window.addEventListener('pagehide',     () => persistSave());
 
-        setup();
-    </script>
+    window.addEventListener("keydown", (e) => {
+        const key = e.key.toLowerCase();
+        if (keyMap[key]) { e.preventDefault(); updateJoypadState(key, true); }
+    });
+    window.addEventListener("keyup", (e) => {
+        const key = e.key.toLowerCase();
+        if (keyMap[key]) updateJoypadState(key, false);
+    });
+
+    window.handleTouch = (k, d) => updateJoypadState(k, d);
+
+    window.clearStorage = () => {
+        if (confirm("Confirm: wipe all ROM and progress?")) { localStorage.clear(); location.reload(); }
+    };
+
+    setup();
+</script>
 </body>
 </html>

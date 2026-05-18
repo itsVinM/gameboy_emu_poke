@@ -12,12 +12,95 @@ export class EmulatorState {
         wasm.__wbg_emulatorstate_free(ptr, 0);
     }
     /**
-     * Returns a pointer to the PPU framebuffer for zero-copy drawing in JS
+     * @returns {number}
+     */
+    af() {
+        const ret = wasm.emulatorstate_af(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {number}
+     */
+    bc() {
+        const ret = wasm.emulatorstate_bc(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {number}
+     */
+    de() {
+        const ret = wasm.emulatorstate_de(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {number}
+     */
+    flags() {
+        const ret = wasm.emulatorstate_flags(this.__wbg_ptr);
+        return ret;
+    }
+    /**
      * @returns {number}
      */
     framebuffer_ptr() {
         const ret = wasm.emulatorstate_framebuffer_ptr(this.__wbg_ptr);
         return ret >>> 0;
+    }
+    /**
+     * @returns {number}
+     */
+    frames() {
+        const ret = wasm.emulatorstate_frames(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * @returns {boolean}
+     */
+    halted() {
+        const ret = wasm.emulatorstate_halted(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
+     * @returns {number}
+     */
+    hl() {
+        const ret = wasm.emulatorstate_hl(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {number}
+     */
+    ie_reg() {
+        const ret = wasm.emulatorstate_ie_reg(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {number}
+     */
+    if_reg() {
+        const ret = wasm.emulatorstate_if_reg(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {boolean}
+     */
+    ime() {
+        const ret = wasm.emulatorstate_ime(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
+     * @returns {boolean}
+     */
+    is_paused() {
+        const ret = wasm.emulatorstate_is_paused(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
+     * @returns {number}
+     */
+    lcdc() {
+        const ret = wasm.emulatorstate_lcdc(this.__wbg_ptr);
+        return ret;
     }
     /**
      * @param {Uint8Array} data
@@ -26,6 +109,13 @@ export class EmulatorState {
         const ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
         const len0 = WASM_VECTOR_LEN;
         wasm.emulatorstate_load_save_wasm(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * @returns {number}
+     */
+    ly() {
+        const ret = wasm.emulatorstate_ly(this.__wbg_ptr);
+        return ret;
     }
     /**
      * @param {Uint8Array} rom
@@ -39,6 +129,13 @@ export class EmulatorState {
         return this;
     }
     /**
+     * @returns {number}
+     */
+    pc() {
+        const ret = wasm.emulatorstate_pc(this.__wbg_ptr);
+        return ret;
+    }
+    /**
      * @returns {Uint8Array}
      */
     save_wasm() {
@@ -48,14 +145,35 @@ export class EmulatorState {
         return v1;
     }
     /**
-     * Executes one full frame of Game Boy logic (~16.7ms)
+     * @param {boolean} p
      */
+    set_paused(p) {
+        wasm.emulatorstate_set_paused(this.__wbg_ptr, p);
+    }
+    /**
+     * @returns {number}
+     */
+    sp() {
+        const ret = wasm.emulatorstate_sp(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {number}
+     */
+    stat() {
+        const ret = wasm.emulatorstate_stat(this.__wbg_ptr);
+        return ret;
+    }
     tick_frame() {
         wasm.emulatorstate_tick_frame(this.__wbg_ptr);
     }
     /**
-     * Updates Joypad state from JavaScript key events
-     * dpad_mask and button_mask should be passed as bitflags (Active Low)
+     * Single CPU instruction + proportional PPU/timer — used by the debugger step button.
+     */
+    tick_step() {
+        wasm.emulatorstate_tick_step(this.__wbg_ptr);
+    }
+    /**
      * @param {number} d_pad
      * @param {number} buttons
      */

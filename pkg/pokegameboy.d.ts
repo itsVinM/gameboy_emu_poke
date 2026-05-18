@@ -4,21 +4,32 @@
 export class EmulatorState {
     free(): void;
     [Symbol.dispose](): void;
-    /**
-     * Returns a pointer to the PPU framebuffer for zero-copy drawing in JS
-     */
+    af(): number;
+    bc(): number;
+    de(): number;
+    flags(): number;
     framebuffer_ptr(): number;
+    frames(): number;
+    halted(): boolean;
+    hl(): number;
+    ie_reg(): number;
+    if_reg(): number;
+    ime(): boolean;
+    is_paused(): boolean;
+    lcdc(): number;
     load_save_wasm(data: Uint8Array): void;
+    ly(): number;
     constructor(rom: Uint8Array);
+    pc(): number;
     save_wasm(): Uint8Array;
-    /**
-     * Executes one full frame of Game Boy logic (~16.7ms)
-     */
+    set_paused(p: boolean): void;
+    sp(): number;
+    stat(): number;
     tick_frame(): void;
     /**
-     * Updates Joypad state from JavaScript key events
-     * dpad_mask and button_mask should be passed as bitflags (Active Low)
+     * Single CPU instruction + proportional PPU/timer — used by the debugger step button.
      */
+    tick_step(): void;
     update_joypad(d_pad: number, buttons: number): void;
 }
 
@@ -27,11 +38,29 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
     readonly __wbg_emulatorstate_free: (a: number, b: number) => void;
+    readonly emulatorstate_af: (a: number) => number;
+    readonly emulatorstate_bc: (a: number) => number;
+    readonly emulatorstate_de: (a: number) => number;
+    readonly emulatorstate_flags: (a: number) => number;
     readonly emulatorstate_framebuffer_ptr: (a: number) => number;
+    readonly emulatorstate_frames: (a: number) => number;
+    readonly emulatorstate_halted: (a: number) => number;
+    readonly emulatorstate_hl: (a: number) => number;
+    readonly emulatorstate_ie_reg: (a: number) => number;
+    readonly emulatorstate_if_reg: (a: number) => number;
+    readonly emulatorstate_ime: (a: number) => number;
+    readonly emulatorstate_is_paused: (a: number) => number;
+    readonly emulatorstate_lcdc: (a: number) => number;
     readonly emulatorstate_load_save_wasm: (a: number, b: number, c: number) => void;
+    readonly emulatorstate_ly: (a: number) => number;
     readonly emulatorstate_new: (a: number, b: number) => number;
+    readonly emulatorstate_pc: (a: number) => number;
     readonly emulatorstate_save_wasm: (a: number) => [number, number];
+    readonly emulatorstate_set_paused: (a: number, b: number) => void;
+    readonly emulatorstate_sp: (a: number) => number;
+    readonly emulatorstate_stat: (a: number) => number;
     readonly emulatorstate_tick_frame: (a: number) => void;
+    readonly emulatorstate_tick_step: (a: number) => void;
     readonly emulatorstate_update_joypad: (a: number, b: number, c: number) => void;
     readonly __wbindgen_free: (a: number, b: number, c: number) => void;
     readonly __wbindgen_malloc: (a: number, b: number) => number;
