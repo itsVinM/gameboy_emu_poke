@@ -6,10 +6,12 @@ pub mod cpu;
 pub mod mmu;
 pub mod ppu;
 pub mod registers;
+pub mod traits;
 
 use cpu::Cpu;
 use mmu::Mmu;
 use ppu::Ppu;
+use traits::Tickable;
 
 // Constant for Game Boy frame timing
 pub const MAX_FRAME_CYCLES: u32 = 70224;
@@ -45,7 +47,7 @@ impl EmulatorState {
 
         while frame_cycles < MAX_FRAME_CYCLES {
             let s = self.cpu.step(&mut self.mmu);
-            self.ppu.tick(s, &mut self.mmu);
+            self.ppu.tick(s, &mut self.mmu); // Tickable::tick via MemoryBus
 
             // --- DIVIDER (DIV) Logic ---
             self.div_acc += s;

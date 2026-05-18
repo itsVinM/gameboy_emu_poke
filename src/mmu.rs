@@ -1,3 +1,5 @@
+use crate::traits::MemoryBus;
+
 pub struct Mmu {
     rom:          Vec<u8>,
     pub rom_bank:     usize,
@@ -134,4 +136,11 @@ impl Mmu {
             _      => self.io[i] = val,
         }
     }
+}
+
+impl MemoryBus for Mmu {
+    #[inline(always)]
+    fn read(&self, addr: u16) -> u8 { Mmu::read(self, addr) }
+    #[inline(always)]
+    fn write(&mut self, addr: u16, val: u8) { Mmu::write(self, addr, val) }
 }
