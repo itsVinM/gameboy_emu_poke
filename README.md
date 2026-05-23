@@ -1,49 +1,65 @@
-
-# Game Boy Emulator (LR35902)
-
+# PokéGB — Game Boy Emulator in Rust
 
 ![Rust](https://img.shields.io/badge/Rust-000000?style=flat&logo=rust&logoColor=white)
-![Build](https://img.shields.io/badge/build-passing-brightgreen)
+![WASM](https://img.shields.io/badge/target-WebAssembly-654ff0?style=flat&logo=webassembly&logoColor=white)
 
-Cycle-accurate Game Boy emulator targeting the Sharp LR35902 CPU, written in Rust. Built as the **second validation target** of a portable test framework — after CHIP-8 (Golang) validated the adapter interface, this project stress-tests it at real scale: 500+ tests, property-based invariant checking, golden-file PPU validation, and Pokemon Red booting to the title screen as the end-to-end acceptance test.
+Game Boy (DMG) emulator written in Rust, compiled to WebAssembly and playable in the browser. Boots and plays Pokémon Red/Blue through the title screen and into gameplay.
 
-Boots Pokemon Red/Blue.
+[**Play it live →**](https://itsvinm.github.io/gameboy_emu_poke/)
 
-Deployed runtime  
-<img src="images/mobile.png" width="300" height="450"> 
-
-## Technical details
-
-| Property | Value |
-|---|---|
-| CPU | Sharp LR35902 (Z80-like, 8-bit) |
-| Clock | 4.194304 MHz |
-| RAM | 8KB WRAM + 8KB VRAM |
-| ROM banking | MBC1 |
-| Display | 160×144, 4-shade greyscale |
-| V-blank | Every 70224 cycles (59.7 Hz) |
+<img src="images/initgameplay.png" width="280"> <img src="images/mobile.png" width="180"> <img src="images/debugger.png" width="280">
 
 ---
 
-## Play on the web
-Due to copyright, the rom is not provided, the wasm runtime can load .gb rom and save the sate as .sav
+## Architecture
 
-[**🚀 Live Demo**](https://itsvinm.github.io/gameboy_emu_poke/)
+| Component | File | Details |
+|---|---|---|
+| CPU | `src/cpu.rs` | Full LR35902 instruction set, interrupts, HALT |
+| MMU | `src/mmu.rs` | Memory map, MBC3 ROM/RAM banking, DMA |
+| PPU | `src/ppu.rs` | Scanline renderer, BG/window/sprites, STAT interrupts |
+| Registers | `src/registers.rs` | 8/16-bit register pairs, flag helpers |
+| WASM bridge | `src/lib.rs` | `wasm-bindgen` bindings for the browser runtime |
 
+## Hardware specs
 
-## Build Locally
+| | |
+|---|---|
+| CPU | Sharp LR35902 (Z80-like, 8-bit) |
+| Clock | 4.194304 MHz |
+| RAM | 8 KB WRAM + 8 KB VRAM |
+| ROM banking | MBC3 |
+| Display | 160×144, 4-shade greyscale |
+| Frame timing | 70224 cycles @ ~59.7 Hz |
+
+---
+
+## Build
+
+Requires [wasm-pack](https://rustwasm.github.io/wasm-pack/).
 
 ```bash
-git clone https://github.com/itsVinM/gameboy_emulator.git
-cd gameboy_emulator
-cargo build --release
-cargo run --release -- <PATH_TO_ROM>
+wasm-pack build --target web
 ```
 
-**Headless (CI):**
+Then serve the project root over HTTP:
+
 ```bash
-cargo run --release -- --headless --frames 100 <PATH_TO_ROM>
+python3 -m http.server 8080
+# open http://localhost:8080
 ```
+
+Browsers block WASM loaded from `file://`, so a local server is required.
+
+---
+
+## Playing
+
+The ROM is not included (copyright). Load any `.gb` file with the **LOAD ROM** button.
+
+- **Keyboard**: Arrow keys = D-pad, `A` = A, `B` = B, `Enter` = Start, `S` = Select
+- **Mobile**: on-screen buttons
+- **Save**: progress auto-saves to `localStorage` every 5 seconds. Use **EXPORT .SAV** / **IMPORT .SAV** to move saves between devices.
 
 ---
 
@@ -54,14 +70,12 @@ cargo test
 cargo test --test integration
 ```
 
-| Suite | What it covers |
+| Suite | Coverage |
 |---|---|
 | CPU opcodes | All LR35902 instructions, flags, half-carry edge cases |
-| Timer | DIV increment, TIMA overflow, interrupt firing cycle |
+| Timer | DIV increment, TIMA overflow, interrupt firing |
 | PPU | Scanline timing, OAM search, sprite priority |
-| Interrupts | V-blank latency, IE/IF flag behavior |
-| Integration | Tetris title screen, Pokemon Red boot |
+| Interrupts | V-blank latency, IE/IF flag behaviour |
+| Integration | Pokémon Red boot sequence |
 | Property-based | PC range, register bounds, stack depth invariants |
-| Golden files | PPU framebuffer pixel-by-pixel regression |
-
----
+| Golden files | PPU framebuffer pixel regression |
