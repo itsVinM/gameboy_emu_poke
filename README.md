@@ -3,12 +3,16 @@
 ![Rust](https://img.shields.io/badge/Rust-000000?style=flat&logo=rust&logoColor=white)
 ![WASM](https://img.shields.io/badge/target-WebAssembly-654ff0?style=flat&logo=webassembly&logoColor=white)
 
-Game Boy (DMG) emulator written in Rust, compiled to WebAssembly. Boots and plays Pokémon Red/Blue.
+Game Boy (DMG) emulator written in Rust, compiled to WebAssembly. Compatible with most MBC3 cartridges — tested with Pokémon Red/Blue, The Legend of Zelda, and Super Mario Land.
 
 [**Play it live →**](https://itsvinm.github.io/gameboy_emu_poke/)
 
 <p align="center">
-  <img src="images/mobile.png" width="280" alt="mobile gameplay">
+  <img src="images/pokemon.png"   width="260" alt="Pokémon Red">
+  &nbsp;
+  <img src="images/zelda.png"     width="260" alt="Zelda">
+  &nbsp;
+  <img src="images/supermario.jpg" width="260" alt="Super Mario Land">
 </p>
 
 ---
@@ -24,10 +28,18 @@ Game Boy (DMG) emulator written in Rust, compiled to WebAssembly. Boots and play
 
 ## Build
 
+**Browser (WASM)**
 ```bash
 wasm-pack build --target web
 python3 -m http.server 8080
+# open http://localhost:8080
 ```
+
+**Local native window**
+```bash
+cargo run -- rom.gb
+```
+Requires a `.gb` ROM file. `F5` saves, `Space` pauses, `N` steps when paused.
 
 ## Playing
 
