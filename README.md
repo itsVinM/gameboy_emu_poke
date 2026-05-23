@@ -6,6 +6,8 @@
 Game Boy (DMG) emulator written in Rust, compiled to WebAssembly and playable in the browser. Boots and plays Pokémon Red/Blue through the title screen and into gameplay.
 
 [**Play it live →**](https://itsvinm.github.io/gameboy_emu_poke/)
+
+<br>
 <img src="images/mobile.png" width="180"> 
 
 ---
