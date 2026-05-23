@@ -1,4 +1,4 @@
-use crate::traits::{MemoryBus, Tickable};
+use crate::mmu::{MemoryBus, Tickable};
 
 pub struct Ppu {
     pub framebuffer: [u8; 160 * 144 * 4],

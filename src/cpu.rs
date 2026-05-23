@@ -1,5 +1,5 @@
 use crate::registers::Registers;
-use crate::traits::MemoryBus;
+use crate::mmu::MemoryBus;
 
 pub struct Cpu {
     pub regs: Registers,

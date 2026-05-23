@@ -1,4 +1,13 @@
-use crate::traits::MemoryBus;
+pub trait MemoryBus {
+    fn read(&self, addr: u16) -> u8;
+    fn write(&mut self, addr: u16, val: u8);
+}
+
+/// A component that advances by a number of CPU T-cycles.
+pub trait Tickable {
+    fn tick<B: MemoryBus>(&mut self, cycles: u32, bus: &mut B);
+}
+
 
 pub struct Mmu {
     rom:          Vec<u8>,
@@ -67,7 +76,7 @@ impl Mmu {
             0xFE00..=0xFE9F => self.oam[addr as usize - 0xFE00],
             0xFEA0..=0xFEFF => 0xFF,
             
-            // --- IMPROVED IO HANDLING ---
+            // IO HANDLING
             0xFF00 => {
                 let select = self.io[0x00] & 0x30; // Only bits 4 & 5 matter for selection
                 let mut res = select | 0xC0;      // Bits 6 & 7 are always 1
@@ -116,11 +125,6 @@ impl Mmu {
             _               => {}
         }
     }
-    #[warn(dead_code)]
-    fn io_read(&self, addr: u16) -> u8 {
-        self.io[addr as usize - 0xFF00]
-    }
-
     fn io_write(&mut self, addr: u16, val: u8) {
         let i = addr as usize - 0xFF00;
         match addr {

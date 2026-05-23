@@ -1,7 +1,7 @@
 #[cfg(not(target_arch = "wasm32"))]
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
 #[cfg(not(target_arch = "wasm32"))]
-use pokegameboy::{cpu::Cpu, mmu::Mmu, ppu::Ppu, MAX_FRAME_CYCLES, traits::Tickable};
+use pokegameboy::{cpu::Cpu, mmu::{Mmu, Tickable}, ppu::Ppu, MAX_FRAME_CYCLES};
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {

@@ -4,12 +4,9 @@ pub mod cpu;
 pub mod mmu;
 pub mod ppu;
 pub mod registers;
-pub mod traits;
-
 use cpu::Cpu;
-use mmu::Mmu;
+use mmu::{Mmu, Tickable};
 use ppu::Ppu;
-use traits::Tickable;
 
 pub const MAX_FRAME_CYCLES: u32 = 70224;
 
