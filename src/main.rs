@@ -76,7 +76,7 @@ fn render(fb: &mut [u32], ppu: &Ppu) {
     const W: usize = 160; const SC: usize = 4;
     (0..144*W).for_each(|i| {
         let p = i * 4;
-        let c = (ppu.framebuffer[p] as u32)<<16 | (ppu.framebuffer[p+1] as u32)<<8 | ppu.framebuffer[p+2] as u32;
+        let c = (ppu.screen.0[p] as u32)<<16 | (ppu.screen.0[p+1] as u32)<<8 | ppu.screen.0[p+2] as u32;
         let row = (i/W)*SC*W*SC + (i%W)*SC;
         (0..SC).for_each(|dy| fb[row+dy*W*SC..row+dy*W*SC+SC].fill(c));
     });

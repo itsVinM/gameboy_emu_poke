@@ -2,39 +2,33 @@ use crate::mmu::{MemoryBus, Tickable};
 
 const SHADES: [u8; 4] = [0xFF, 0xAA, 0x55, 0x00];
 
-pub struct Ppu {
-    pub framebuffer: [u8; 160 * 144 * 4],
-    dot: u32,
-    ly:  u8,
+// SCREEN
+pub struct Screen(pub [u8; 160 * 144 * 4]);
+
+impl Screen {
+    fn new() -> Self { Self([0xFF; 160 * 144 * 4]) }
+
+    fn set(&mut self, x: usize, y: usize, shade: u8) {
+        let i = (y * 160 + x) * 4;
+        self.0[i..i+3].fill(shade);
+        self.0[i+3] = 0xFF;
+    }
+
+    fn shade_at(&self, x: usize, y: usize) -> u8 {
+        self.0[(y * 160 + x) * 4]
+    }
 }
 
-impl Ppu {
-    pub fn new() -> Self {
-        Self { framebuffer: [0xFF; 160 * 144 * 4], dot: 0, ly: 0 }
-    }
+// LAYER TRAIT
+trait Layer {
+    fn draw<B: MemoryBus>(&self, bus: &B, screen: &mut Screen, ly: u8, lcdc: u8);
+}
 
-    fn render_scanline<B: MemoryBus>(&mut self, bus: &B, lcdc: u8) {
-        let scx = bus.read(0xFF43);
-        let scy = bus.read(0xFF42);
-        let wx  = bus.read(0xFF4B).wrapping_sub(7);
-        let wy  = bus.read(0xFF4A);
-        let bgp = bus.read(0xFF47);
-        let ly  = self.ly;
+// BACKGROUND & WINDOW
+struct BgLayer;
 
-        for x in 0u8..160 {
-            let (win, px, py) = if (lcdc & 0x20 != 0) && ly >= wy && x >= wx {
-                (true, (x - wx) as u16, (ly - wy) as u16)
-            } else {
-                (false, x.wrapping_add(scx) as u16, ly.wrapping_add(scy) as u16)
-            };
-            let color = self.get_bg_pixel(bus, lcdc, px, py, bgp, win);
-            self.set_raw(x as usize, ly as usize, SHADES[color as usize]);
-        }
-
-        if lcdc & 0x02 != 0 { self.render_sprites(bus); }
-    }
-
-    fn get_bg_pixel<B: MemoryBus>(&self, bus: &B, lcdc: u8, px: u16, py: u16, palette: u8, is_win: bool) -> u8 {
+impl BgLayer {
+    fn pixel<B: MemoryBus>(&self, bus: &B, lcdc: u8, px: u16, py: u16, palette: u8, is_win: bool) -> u8 {
         let map_base = if lcdc & (if is_win { 0x40 } else { 0x08 }) != 0 { 0x9C00u16 } else { 0x9800 };
         let tile_idx = bus.read(map_base + (py / 8) * 32 + (px / 8));
         let tile_addr = if lcdc & 0x10 != 0 {
@@ -48,9 +42,34 @@ impl Ppu {
         let id = ((hi >> bit) & 1) << 1 | ((lo >> bit) & 1);
         (palette >> (id * 2)) & 0x03
     }
+}
 
-    fn render_sprites<B: MemoryBus>(&mut self, bus: &B) {
-        let ly   = self.ly as i16;
+impl Layer for BgLayer {
+    fn draw<B: MemoryBus>(&self, bus: &B, screen: &mut Screen, ly: u8, lcdc: u8) {
+        let scx = bus.read(0xFF43);
+        let scy = bus.read(0xFF42);
+        let wx  = bus.read(0xFF4B).wrapping_sub(7);
+        let wy  = bus.read(0xFF4A);
+        let bgp = bus.read(0xFF47);
+
+        for x in 0u8..160 {
+            let (win, px, py) = if (lcdc & 0x20 != 0) && ly >= wy && x >= wx {
+                (true, (x - wx) as u16, (ly - wy) as u16)
+            } else {
+                (false, x.wrapping_add(scx) as u16, ly.wrapping_add(scy) as u16)
+            };
+            let color = self.pixel(bus, lcdc, px, py, bgp, win);
+            screen.set(x as usize, ly as usize, SHADES[color as usize]);
+        }
+    }
+}
+
+// SPRITS
+struct SpriteLayer;
+
+impl Layer for SpriteLayer {
+    fn draw<B: MemoryBus>(&self, bus: &B, screen: &mut Screen, ly: u8, _lcdc: u8) {
+        let ly_i = ly as i16;
         let obp0 = bus.read(0xFF48);
         let obp1 = bus.read(0xFF49);
         let mut count = 0;
@@ -59,14 +78,14 @@ impl Ppu {
             if count == 10 { break; }
             let base = 0xFE00 + i as u16 * 4;
             let sy = bus.read(base) as i16 - 16;
-            if ly < sy || ly >= sy + 8 { continue; }
+            if ly_i < sy || ly_i >= sy + 8 { continue; }
             count += 1;
 
             let sx   = bus.read(base + 1) as i16 - 8;
             let tile = bus.read(base + 2);
             let attr = bus.read(base + 3);
             let pal  = if attr & 0x10 != 0 { obp1 } else { obp0 };
-            let mut row = (ly - sy) as u16;
+            let mut row = (ly_i - sy) as u16;
             if attr & 0x40 != 0 { row = 7 - row; }
 
             let addr = 0x8000 + tile as u16 * 16 + row * 2;
@@ -77,23 +96,32 @@ impl Ppu {
                 if tx < 0 || tx >= 160 { continue; }
                 let bit = if attr & 0x20 != 0 { px } else { 7 - px } as u8;
                 let id  = ((hi >> bit) & 1) << 1 | ((lo >> bit) & 1);
-                if id == 0 { continue; } // color 0 is transparent for sprites
+                if id == 0 { continue; } // color 0 is transparent
 
-                if attr & 0x80 != 0 {
-                    // BG-over-sprite: 0xFF in framebuffer means BG color 0 (transparent)
-                    if self.framebuffer[(ly as usize * 160 + tx as usize) * 4] != 0xFF { continue; }
-                }
+                // BG-over-sprite: 0xFF means BG color 0 (transparent)
+                if attr & 0x80 != 0 && screen.shade_at(tx as usize, ly as usize) != 0xFF { continue; }
 
-                self.set_raw(tx as usize, ly as usize, SHADES[((pal >> (id * 2)) & 0x03) as usize]);
+                screen.set(tx as usize, ly as usize, SHADES[((pal >> (id * 2)) & 0x03) as usize]);
             }
         }
     }
+}
 
-    #[inline(always)]
-    fn set_raw(&mut self, x: usize, y: usize, shade: u8) {
-        let i = (y * 160 + x) * 4;
-        self.framebuffer[i..i+3].fill(shade);
-        self.framebuffer[i+3] = 0xFF;
+// PPU
+pub struct Ppu {
+    pub screen: Screen,
+    dot: u32,
+    ly:  u8,
+}
+
+impl Ppu {
+    pub fn new() -> Self {
+        Self { screen: Screen::new(), dot: 0, ly: 0 }
+    }
+
+    fn render_scanline<B: MemoryBus>(&mut self, bus: &B, lcdc: u8) {
+        BgLayer.draw(bus, &mut self.screen, self.ly, lcdc);
+        if lcdc & 0x02 != 0 { SpriteLayer.draw(bus, &mut self.screen, self.ly, lcdc); }
     }
 }
 

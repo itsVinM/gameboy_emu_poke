@@ -98,7 +98,7 @@ impl EmulatorState {
 
     // ── framebuffer ───────────────────────────────────────────────────────────
 
-    pub fn framebuffer_ptr(&self) -> *const u8 { self.ppu.framebuffer.as_ptr() }
+    pub fn framebuffer_ptr(&self) -> *const u8 { self.ppu.screen.0.as_ptr() }
 }
 
 impl EmulatorState {

@@ -8,11 +8,11 @@ Game Boy (DMG) emulator written in Rust, compiled to WebAssembly. Compatible wit
 [**Play it live →**](https://itsvinm.github.io/gameboy_emu_poke/)
 
 <p align="center">
-  <img src="images/pokemon.png"   width="260" alt="Pokémon Red">
+  <img src="images/pokemon.png"   width="260" height="400" alt="Pokémon Red">
   &nbsp;
-  <img src="images/zelda.png"     width="260" alt="Zelda">
+  <img src="images/zelda.png"     width="260" height="400" alt="Zelda">
   &nbsp;
-  <img src="images/supermario.jpg" width="260" alt="Super Mario Land">
+  <img src="images/supermario.jpg" width="260" height="400" alt="Super Mario Land">
 </p>
 
 ---
@@ -28,18 +28,10 @@ Game Boy (DMG) emulator written in Rust, compiled to WebAssembly. Compatible wit
 
 ## Build
 
-**Browser (WASM)**
 ```bash
 wasm-pack build --target web
 python3 -m http.server 8080
-# open http://localhost:8080
 ```
-
-**Local native window**
-```bash
-cargo run -- rom.gb
-```
-Requires a `.gb` ROM file. `F5` saves, `Space` pauses, `N` steps when paused.
 
 ## Playing
 
