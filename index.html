@@ -396,17 +396,49 @@
     let dpad = 0x0F, buttons = 0x0F;
     let saveLoaded = false, frameCount = 0;
     let debugOpen = false;
-    const SAVE_INJECT_FRAME = 10;
     const statusEl = document.getElementById('status');
 
     const keyMap = {
-        "arrowdown":  { type:"d", bit:0x08 }, "arrowup":    { type:"d", bit:0x04 },
-        "arrowleft":  { type:"d", bit:0x02 }, "arrowright": { type:"d", bit:0x01 },
-        "enter":      { type:"b", bit:0x08 }, "s":          { type:"b", bit:0x04 },
-        "b":          { type:"b", bit:0x02 }, "a":          { type:"b", bit:0x01 },
+        arrowdown:  { type:"d", bit:0x08 }, arrowup:    { type:"d", bit:0x04 },
+        arrowleft:  { type:"d", bit:0x02 }, arrowright: { type:"d", bit:0x01 },
+        enter:      { type:"b", bit:0x08 }, s:          { type:"b", bit:0x04 },
+        b:          { type:"b", bit:0x02 }, a:          { type:"b", bit:0x01 },
     };
 
-    // ── debug panel ───────────────────────────────────────────────────────────
+    const h8  = v => v.toString(16).padStart(2,'0').toUpperCase();
+    const h16 = v => v.toString(16).padStart(4,'0').toUpperCase();
+
+    const showStatus = (msg, color, duration = 1200) => {
+        statusEl.innerText = msg;
+        statusEl.style.color = color || '';
+        if (duration) setTimeout(() => { statusEl.innerText = "LIVE"; statusEl.style.color = ''; }, duration);
+    };
+
+    // ── debug ─────────────────────────────────────────────────────────────────
+
+    const dbgRegs  = [['pc',h16,'pc'],['sp',h16,'sp'],['af',h16,'af'],['bc',h16,'bc'],['de',h16,'de'],['hl',h16,'hl']];
+    const dbgSys   = [['ly',h8,'ly'],['lcdc',h8,'lcdc'],['stat',h8,'stat'],['if',h8,'if_reg'],['ie',h8,'ie_reg']];
+    const dbgFlags = [['z',0x80],['n',0x40],['h',0x20],['c',0x10]];
+
+    function refreshDebug() {
+        if (!emu || !debugOpen) return;
+        dbgRegs.forEach(([id, fmt, fn]) => document.getElementById(`d-${id}`).textContent = fmt(emu[fn]()));
+        dbgSys .forEach(([id, fmt, fn]) => document.getElementById(`d-${id}`).textContent = fmt(emu[fn]()));
+        const f = emu.flags();
+        dbgFlags.forEach(([id, bit]) => {
+            const el = document.getElementById(`f-${id}`);
+            const on = f & bit;
+            el.textContent = on ? '1' : '0';
+            el.className   = 'val ' + (on ? 'on' : 'off');
+        });
+        ['ime','halt'].forEach(id => {
+            const el = document.getElementById(`f-${id}`);
+            const on = id === 'ime' ? emu.ime() : emu.halted();
+            el.textContent = on ? '1' : '0';
+            el.className   = 'val ' + (on ? 'on' : 'off');
+        });
+        document.getElementById('dbg-frame-count').textContent = `frame ${emu.frames()}`;
+    }
 
     window.toggleDebug = () => {
         debugOpen = !debugOpen;
@@ -415,214 +447,106 @@
         if (debugOpen && emu) refreshDebug();
     };
 
-    function h8(v)  { return v.toString(16).padStart(2,'0').toUpperCase(); }
-    function h16(v) { return v.toString(16).padStart(4,'0').toUpperCase(); }
-
-    function refreshDebug() {
-        if (!emu || !debugOpen) return;
-        document.getElementById('d-pc').textContent = h16(emu.pc());
-        document.getElementById('d-sp').textContent = h16(emu.sp());
-        document.getElementById('d-af').textContent = h16(emu.af());
-        document.getElementById('d-bc').textContent = h16(emu.bc());
-        document.getElementById('d-de').textContent = h16(emu.de());
-        document.getElementById('d-hl').textContent = h16(emu.hl());
-
-        const f = emu.flags();
-        setFlag('f-z', f & 0x80);
-        setFlag('f-n', f & 0x40);
-        setFlag('f-h', f & 0x20);
-        setFlag('f-c', f & 0x10);
-        setFlag('f-ime',  emu.ime()    ? 1 : 0);
-        setFlag('f-halt', emu.halted() ? 1 : 0);
-
-        document.getElementById('d-ly').textContent   = h8(emu.ly());
-        document.getElementById('d-lcdc').textContent = h8(emu.lcdc());
-        document.getElementById('d-stat').textContent = h8(emu.stat());
-        document.getElementById('d-if').textContent   = h8(emu.if_reg());
-        document.getElementById('d-ie').textContent   = h8(emu.ie_reg());
-
-        document.getElementById('dbg-frame-count').textContent = `frame ${emu.frames()}`;
-    }
-
-    function setFlag(id, val) {
-        const el = document.getElementById(id);
-        el.textContent = val ? '1' : '0';
-        el.className = 'val ' + (val ? 'on' : 'off');
-    }
-
-    window.dbgPause = () => {
+    function setPaused(paused) {
         if (!emu) return;
-        emu.set_paused(true);
-        document.getElementById('btn-pause').disabled  = true;
-        document.getElementById('btn-resume').disabled = false;
-        document.getElementById('btn-step').disabled   = false;
-        showStatus("PAUSED", "#ffd60a", 0);
-        refreshDebug();
+        emu.set_paused(paused);
+        document.getElementById('btn-pause').disabled  =  paused;
+        document.getElementById('btn-resume').disabled = !paused;
+        document.getElementById('btn-step').disabled   = !paused;
+        showStatus(paused ? "PAUSED" : "LIVE", paused ? "#ffd60a" : "", 0);
+        if (paused) refreshDebug();
+    }
+
+    window.dbgPause  = () => setPaused(true);
+    window.dbgResume = () => setPaused(false);
+    window.dbgStep   = () => { if (emu?.is_paused()) { emu.tick_step(); refreshDebug(); } };
+
+    // ── save ──────────────────────────────────────────────────────────────────
+
+    const persistSave = () => {
+        if (!emu) return;
+        const bytes = emu.save_wasm();
+        if (bytes?.some(b => b !== 0)) localStorage.setItem('auto_save_sram', JSON.stringify(Array.from(bytes)));
     };
 
-    window.dbgResume = () => {
+    window.exportSram = () => {
         if (!emu) return;
-        emu.set_paused(false);
-        document.getElementById('btn-pause').disabled  = false;
-        document.getElementById('btn-resume').disabled = true;
-        document.getElementById('btn-step').disabled   = true;
-        showStatus("LIVE", "", 0);
-    };
-
-    window.dbgStep = () => {
-        if (!emu || !emu.is_paused()) return;
-        emu.tick_step();
-        refreshDebug();
-    };
-
-    // ── helpers ───────────────────────────────────────────────────────────────
-
-    function persistSave() {
-        if (!emu) return false;
-        const saveBytes = emu.save_wasm();
-        const hasData = saveBytes && saveBytes.length > 0 && saveBytes.some(b => b !== 0);
-        if (hasData) localStorage.setItem('auto_save_sram', JSON.stringify(Array.from(saveBytes)));
-        return hasData;
-    }
-
-    function showStatus(msg, color, duration = 1200) {
-        statusEl.innerText   = msg;
-        statusEl.style.color = color || '';
-        if (duration) setTimeout(() => { statusEl.innerText = "LIVE"; statusEl.style.color = ''; }, duration);
-    }
-
-    // ── boot ─────────────────────────────────────────────────────────────────
-
-    async function setup() {
-        try {
-            const wasm = await init();
-            wasm_mem = wasm.memory;
-            const savedRom = localStorage.getItem('stored_rom');
-            if (savedRom) {
-                statusEl.innerText = "RESUMING...";
-                startEmulator(new Uint8Array(JSON.parse(savedRom)));
-            } else {
-                statusEl.innerText = "WAITING FOR CARTRIDGE";
-            }
-        } catch (err) {
-            console.error(err);
-            statusEl.innerText = "INIT ERROR";
-        }
-    }
-
-    function startEmulator(bytes) {
-        try {
-            emu        = new EmulatorState(bytes);
-            saveLoaded = false;
-            frameCount = 0;
-            statusEl.innerText = "BOOTING...";
-
-            const ctx = document.getElementById('screen').getContext('2d');
-
-            function frame() {
-                emu.tick_frame(); // no-op when paused
-
-                frameCount++;
-                if (!saveLoaded && frameCount >= SAVE_INJECT_FRAME) {
-                    const stored = localStorage.getItem('auto_save_sram');
-                    if (stored) {
-                        try { emu.load_save_wasm(new Uint8Array(JSON.parse(stored))); }
-                        catch(e) { console.warn("SRAM restore failed:", e); }
-                    }
-                    saveLoaded = true;
-                    if (!emu.is_paused()) showStatus("LIVE", "", 0);
-                }
-
-                const ptr    = emu.framebuffer_ptr();
-                const pixels = new Uint8ClampedArray(wasm_mem.buffer, ptr, 160 * 144 * 4);
-                ctx.putImageData(new ImageData(pixels, 160, 144), 0, 0);
-
-                if (debugOpen) refreshDebug();
-
-                requestAnimationFrame(frame);
-            }
-            requestAnimationFrame(frame);
-
-            setInterval(() => { if (persistSave()) showStatus("SYNCED", "#4cd964"); }, 5000);
-
-        } catch (err) {
-            console.error(err);
-            statusEl.innerText = "HARDWARE FAULT";
-        }
-    }
-
-    // ── joypad ────────────────────────────────────────────────────────────────
-
-    function updateJoypadState(keyName, isDown) {
-        const config = keyMap[keyName];
-        if (!config || !emu) return;
-        const btn = document.getElementById(`btn-${keyName}`);
-        if (btn) isDown ? btn.classList.add('active') : btn.classList.remove('active');
-        if (config.type === "d") { isDown ? dpad    &= ~config.bit : dpad    |= config.bit; }
-        else                     { isDown ? buttons &= ~config.bit : buttons |= config.bit; }
-        emu.update_joypad(dpad, buttons);
-    }
-
-    // ── export .sav ───────────────────────────────────────────────────────────
-
-    window.exportSram = async () => {
-        if (!emu) return;
-        const saveBytes = emu.save_wasm();
-        if (!saveBytes || saveBytes.length === 0) { showStatus("NO SAVE DATA", "#ff3b30"); return; }
-        localStorage.setItem('auto_save_sram', JSON.stringify(Array.from(saveBytes)));
-        const blob = new Blob([new Uint8Array(saveBytes)], { type: 'application/octet-stream' });
-        if (window.showSaveFilePicker) {
-            try {
-                const handle = await window.showSaveFilePicker({
-                    suggestedName: 'trainer_save.sav',
-                    types: [{ description: 'Game Boy Save', accept: { 'application/octet-stream': ['.sav'] } }]
-                });
-                const w = await handle.createWritable();
-                await w.write(blob); await w.close();
-                showStatus("SAV EXPORTED", "#4cd964"); return;
-            } catch(e) { if (e.name === 'AbortError') return; }
-        }
-        const url = URL.createObjectURL(blob);
-        const a   = Object.assign(document.createElement('a'), { href: url, download: 'trainer_save.sav' });
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        const bytes = emu.save_wasm();
+        if (!bytes?.length) { showStatus("NO SAVE DATA", "#ff3b30"); return; }
+        persistSave();
+        const url = URL.createObjectURL(new Blob([bytes], { type: 'application/octet-stream' }));
+        Object.assign(document.createElement('a'), { href: url, download: 'save.sav' }).click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
         showStatus("SAV EXPORTED", "#4cd964");
     };
 
-    // ── file inputs ───────────────────────────────────────────────────────────
+    window.clearStorage = () => {
+        if (confirm("Wipe all ROM and save data?")) { localStorage.clear(); location.reload(); }
+    };
 
-    document.getElementById('sav-upload').onchange = async (e) => {
+    // ── boot ─────────────────────────────────────────────────────────────────
+
+    function startEmulator(bytes) {
+        emu = new EmulatorState(bytes);
+        saveLoaded = false; frameCount = 0;
+        statusEl.innerText = "BOOTING...";
+        const ctx = document.getElementById('screen').getContext('2d');
+
+        (function frame() {
+            emu.tick_frame();
+            if (!saveLoaded && ++frameCount >= 10) {
+                try {
+                    const stored = localStorage.getItem('auto_save_sram');
+                    if (stored) emu.load_save_wasm(new Uint8Array(JSON.parse(stored)));
+                } catch(e) {}
+                saveLoaded = true;
+                if (!emu.is_paused()) showStatus("LIVE", "", 0);
+            }
+            ctx.putImageData(new ImageData(new Uint8ClampedArray(wasm_mem.buffer, emu.framebuffer_ptr(), 160*144*4), 160, 144), 0, 0);
+            if (debugOpen) refreshDebug();
+            requestAnimationFrame(frame);
+        })();
+
+        setInterval(() => { persistSave(); showStatus("SYNCED", "#4cd964"); }, 5000);
+    }
+
+    async function setup() {
+        try {
+            wasm_mem = (await init()).memory;
+            const rom = localStorage.getItem('stored_rom');
+            statusEl.innerText = rom ? "RESUMING..." : "WAITING FOR CARTRIDGE";
+            if (rom) startEmulator(new Uint8Array(JSON.parse(rom)));
+        } catch(e) { statusEl.innerText = "INIT ERROR"; }
+    }
+
+    // ── input ─────────────────────────────────────────────────────────────────
+
+    function updateJoypad(key, down) {
+        const cfg = keyMap[key];
+        if (!cfg || !emu) return;
+        document.getElementById(`btn-${key}`)?.classList.toggle('active', down);
+        if (cfg.type === "d") down ? dpad    &= ~cfg.bit : dpad    |= cfg.bit;
+        else                  down ? buttons &= ~cfg.bit : buttons |= cfg.bit;
+        emu.update_joypad(dpad, buttons);
+    }
+
+    window.handleTouch = (k, d) => updateJoypad(k, d);
+    window.addEventListener("keydown", e => { if (keyMap[e.key.toLowerCase()]) { e.preventDefault(); updateJoypad(e.key.toLowerCase(), true);  } });
+    window.addEventListener("keyup",   e => updateJoypad(e.key.toLowerCase(), false));
+    window.addEventListener('beforeunload', persistSave);
+    window.addEventListener('pagehide',     persistSave);
+
+    document.getElementById('rom-upload').onchange = async e => {
+        const bytes = new Uint8Array(await e.target.files[0].arrayBuffer());
+        localStorage.setItem('stored_rom', JSON.stringify(Array.from(bytes)));
+        startEmulator(bytes);
+    };
+    document.getElementById('sav-upload').onchange = async e => {
         if (!emu) return;
         const bytes = new Uint8Array(await e.target.files[0].arrayBuffer());
         emu.load_save_wasm(bytes);
         localStorage.setItem('auto_save_sram', JSON.stringify(Array.from(bytes)));
         showStatus("SAV INJECTED", "#4cd964");
-    };
-
-    document.getElementById('rom-upload').onchange = async (e) => {
-        const bytes = new Uint8Array(await e.target.files[0].arrayBuffer());
-        localStorage.setItem('stored_rom', JSON.stringify(Array.from(bytes)));
-        startEmulator(bytes);
-    };
-
-    // ── lifecycle ─────────────────────────────────────────────────────────────
-
-    window.addEventListener('beforeunload', () => persistSave());
-    window.addEventListener('pagehide',     () => persistSave());
-
-    window.addEventListener("keydown", (e) => {
-        const key = e.key.toLowerCase();
-        if (keyMap[key]) { e.preventDefault(); updateJoypadState(key, true); }
-    });
-    window.addEventListener("keyup", (e) => {
-        const key = e.key.toLowerCase();
-        if (keyMap[key]) updateJoypadState(key, false);
-    });
-
-    window.handleTouch = (k, d) => updateJoypadState(k, d);
-
-    window.clearStorage = () => {
-        if (confirm("Confirm: wipe all ROM and progress?")) { localStorage.clear(); location.reload(); }
     };
 
     setup();
