@@ -1,90 +1,101 @@
-#[cfg(not(target_arch = "wasm32"))]
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
-#[cfg(not(target_arch = "wasm32"))]
 use pokegameboy::{cpu::Cpu, mmu::{Mmu, Tickable}, ppu::Ppu, MAX_FRAME_CYCLES};
 
-#[cfg(not(target_arch = "wasm32"))]
-fn main() {
-    let args: Vec<String> = std::env::args().collect();
-    let rom_path = args.get(1).map(|s| s.as_str()).unwrap_or("*.gb");
-    let rom = std::fs::read(rom_path).unwrap_or_else(|_| { eprintln!("error: {} not found", rom_path); std::process::exit(1); });
+const DPAD: [(Key, u8); 4] = [(Key::Down,0x08),(Key::Up,0x04),(Key::Left,0x02),(Key::Right,0x01)];
+const BTNS: [(Key, u8); 4] = [(Key::Enter,0x08),(Key::S,0x04),(Key::B,0x02),(Key::A,0x01)];
 
-    let mut mmu = Mmu::new(rom, vec![0u8; 0x8000]);
-    if let Ok(save) = std::fs::read("*.sav") { mmu.load_save_data(save); }
-
-    let (mut cpu, mut ppu) = (Cpu::new(), Ppu::new());
-    let (w, h, sc) = (160usize, 144usize, 4usize);
-    let mut window = Window::new("PokéGB", w * sc, h * sc, WindowOptions::default()).unwrap();
-    window.limit_update_rate(Some(std::time::Duration::from_micros(16_742)));
-
-    let mut fb       = vec![0u32; w * sc * h * sc];
-    let mut div_acc  = 0u32;
-    let mut timer_acc = 0u32;
-
-    while window.is_open() && !window.is_key_down(Key::Escape) {
-        if window.is_key_pressed(Key::F5, KeyRepeat::No) {
-            std::fs::write("rom.sav", mmu.get_save_data()).ok();
-        }
-
-        update_joypad(&window, &mut mmu);
-
-        let mut cycles = 0;
-        while cycles < MAX_FRAME_CYCLES {
-            let s = cpu.step(&mut mmu);
-            ppu.tick(s, &mut mmu);
-
-            div_acc += s;
-            if div_acc >= 256 { div_acc -= 256; mmu.io[0x04] = mmu.io[0x04].wrapping_add(1); }
-
-            let tac = mmu.read(0xFF07);
-            if tac & 0x04 != 0 {
-                timer_acc += s;
-                let thresh = match tac & 0x03 { 0 => 1024, 1 => 16, 2 => 64, _ => 256 };
-                while timer_acc >= thresh {
-                    timer_acc -= thresh;
-                    let tima = mmu.read(0xFF05);
-                    if tima == 0xFF { mmu.write(0xFF05, mmu.read(0xFF06)); mmu.write(0xFF0F, mmu.read(0xFF0F) | 0x04); }
-                    else            { mmu.write(0xFF05, tima + 1); }
-                }
-            }
-            cycles += s;
-        }
-
-        for y in 0..h {
-            for x in 0..w {
-                let i = (y * 160 + x) * 4;
-                let c = (ppu.framebuffer[i] as u32) << 16
-                      | (ppu.framebuffer[i+1] as u32) << 8
-                      |  ppu.framebuffer[i+2] as u32;
-                for dy in 0..sc {
-                    let start = (y * sc + dy) * w * sc + x * sc;
-                    fb[start..start+sc].fill(c);
-                }
-            }
-        }
-        window.update_with_buffer(&fb, w * sc, h * sc).unwrap();
+trait Steppable {
+    fn step(&mut self) -> u32;
+    fn run_frame(&mut self) {
+        let mut c = 0;
+        while c < MAX_FRAME_CYCLES { c += self.step(); }
     }
-
-    std::fs::write("*.sav", mmu.get_save_data()).ok();
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-fn update_joypad(w: &Window, m: &mut Mmu) {
-    let mut d = 0x0Fu8;
-    let mut b = 0x0Fu8;
-    if w.is_key_down(Key::Down)  { d &= !0x08; }
-    if w.is_key_down(Key::Up)    { d &= !0x04; }
-    if w.is_key_down(Key::Left)  { d &= !0x02; }
-    if w.is_key_down(Key::Right) { d &= !0x01; }
-    if w.is_key_down(Key::Enter) { b &= !0x08; }
-    if w.is_key_down(Key::S)     { b &= !0x04; }
-    if w.is_key_down(Key::B)     { b &= !0x02; }
-    if w.is_key_down(Key::A)     { b &= !0x01; }
+struct Emulator { cpu: Cpu, ppu: Ppu, mmu: Mmu, div: u32, timer: u32, pub paused: bool }
 
-    let select = m.io[0x00] & 0x30;
-    let mut joyp = 0x0F;
-    if select & 0x10 == 0 { joyp &= d; }
-    if select & 0x20 == 0 { joyp &= b; }
-    if (m.prev_joyp & !joyp) & 0x0F != 0 { m.write(0xFF0F, m.read(0xFF0F) | 0x10); }
-    m.dpad = d; m.buttons = b; m.prev_joyp = joyp;
+impl Emulator {
+    fn new(rom: Vec<u8>) -> Self {
+        let mut mmu = Mmu::new(rom, vec![0u8; 0x8000]);
+        if let Ok(s) = std::fs::read("rom.sav") { mmu.load_save_data(s); }
+        Self { cpu: Cpu::new(), ppu: Ppu::new(), mmu, div: 0, timer: 0, paused: false }
+    }
+    fn save(&self) { std::fs::write("rom.sav", self.mmu.get_save_data()).ok(); }
+    fn debug_line(&self) {
+        println!("PC:{:04X} AF:{:04X} BC:{:04X} DE:{:04X} HL:{:04X} SP:{:04X} LY:{:02X}",
+            self.cpu.regs.pc, self.cpu.regs.get_af(), self.cpu.regs.get_bc(),
+            self.cpu.regs.get_de(), self.cpu.regs.get_hl(), self.cpu.regs.sp, self.mmu.read(0xFF44));
+    }
+}
+
+impl Steppable for Emulator {
+    fn step(&mut self) -> u32 {
+        let s = self.cpu.step(&mut self.mmu);
+        self.ppu.tick(s, &mut self.mmu);
+        self.div += s;
+        if self.div >= 256 { self.div -= 256; self.mmu.io[0x04] = self.mmu.io[0x04].wrapping_add(1); }
+        let tac = self.mmu.read(0xFF07);
+        if tac & 0x04 != 0 {
+            self.timer += s;
+            let th = match tac & 0x03 { 0=>1024, 1=>16, 2=>64, _=>256 };
+            while self.timer >= th {
+                self.timer -= th;
+                let tima = self.mmu.read(0xFF05);
+                if tima == 0xFF { self.mmu.write(0xFF05, self.mmu.read(0xFF06)); self.mmu.write(0xFF0F, self.mmu.read(0xFF0F)|0x04); }
+                else            { self.mmu.write(0xFF05, tima+1); }
+            }
+        }
+        s
+    }
+}
+
+fn make_window() -> Window {
+    let mut w = Window::new("PokéGB", 160*4, 144*4, WindowOptions::default()).unwrap();
+    w.limit_update_rate(Some(std::time::Duration::from_micros(16_742)));
+    w
+}
+
+fn handle_input(w: &Window, emu: &mut Emulator) {
+    if w.is_key_pressed(Key::Space, KeyRepeat::No) {
+        emu.paused = !emu.paused;
+        if emu.paused { println!("\n── PAUSED  [N] step  [Space] resume ──"); }
+    }
+    if w.is_key_pressed(Key::F5, KeyRepeat::No) { emu.save(); println!("saved → rom.sav"); }
+    if emu.paused && w.is_key_pressed(Key::N, KeyRepeat::Yes) { emu.step(); emu.debug_line(); return; }
+    if emu.paused { return; }
+
+    let d = DPAD.iter().fold(0x0Fu8, |a,&(k,b)| if w.is_key_down(k) { a & !b } else { a });
+    let b = BTNS.iter().fold(0x0Fu8, |a,&(k,b)| if w.is_key_down(k) { a & !b } else { a });
+    let sel = emu.mmu.io[0x00] & 0x30;
+    let joyp = 0x0Fu8 & (if sel&0x10==0 { d } else { 0x0F }) & (if sel&0x20==0 { b } else { 0x0F });
+    if (emu.mmu.prev_joyp & !joyp) & 0x0F != 0 { emu.mmu.write(0xFF0F, emu.mmu.read(0xFF0F)|0x10); }
+    emu.mmu.dpad = d; emu.mmu.buttons = b; emu.mmu.prev_joyp = joyp;
+}
+
+fn render(fb: &mut [u32], ppu: &Ppu) {
+    const W: usize = 160; const SC: usize = 4;
+    (0..144*W).for_each(|i| {
+        let p = i * 4;
+        let c = (ppu.framebuffer[p] as u32)<<16 | (ppu.framebuffer[p+1] as u32)<<8 | ppu.framebuffer[p+2] as u32;
+        let row = (i/W)*SC*W*SC + (i%W)*SC;
+        (0..SC).for_each(|dy| fb[row+dy*W*SC..row+dy*W*SC+SC].fill(c));
+    });
+}
+
+fn main() {
+    let args: Vec<String> = std::env::args().collect();
+    let path = args.get(1).map(|s| s.as_str()).unwrap_or("rom.gb");
+    let rom  = std::fs::read(path).unwrap_or_else(|_| { eprintln!("error: {path} not found"); std::process::exit(1); });
+
+    let mut emu    = Emulator::new(rom);
+    let mut fb     = vec![0u32; 160*4*144*4];
+    let mut window = make_window();
+
+    while window.is_open() && !window.is_key_down(Key::Escape) {
+        handle_input(&window, &mut emu);
+        if !emu.paused { emu.run_frame(); }
+        render(&mut fb, &emu.ppu);
+        window.update_with_buffer(&fb, 160*4, 144*4).unwrap();
+    }
+    emu.save();
 }
