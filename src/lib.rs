@@ -37,7 +37,7 @@ impl EmulatorState {
         }
     }
 
-    // ── run controls ─────────────────────────────────────────────────────────
+    // run controls 
 
     pub fn tick_frame(&mut self) {
         if self.paused { return; }
@@ -56,7 +56,7 @@ impl EmulatorState {
     pub fn set_paused(&mut self, p: bool) { self.paused = p; }
     pub fn is_paused(&self) -> bool { self.paused }
 
-    // ── register reads (for the debug panel) ─────────────────────────────────
+    // register reads (for the debug panel) 
 
     pub fn pc(&self)    -> u16 { self.cpu.regs.pc }
     pub fn sp(&self)    -> u16 { self.cpu.regs.sp }

@@ -8,7 +8,7 @@ fn main() {
     let rom = std::fs::read("rom.gb").expect("rom.gb missing");
     let mut mmu = Mmu::new(rom, vec![0u8; 0x8000]);
     
-    // --- LOAD SAVE DATA ---
+    // LOAD SAVE DATA
     if let Ok(save_data) = std::fs::read("rom.sav") {
         mmu.load_save_data(save_data);
         println!("Principal: Existing save state loaded from rom.sav");
@@ -29,7 +29,7 @@ fn main() {
     while window.is_open() && !window.is_key_down(Key::Escape) {
         if window.is_key_pressed(Key::Space, KeyRepeat::No) { paused = !paused; }
 
-        // ---  MANUAL SAVE TRIGGER ---
+        // MANUAL SAVE TRIGGER
         if window.is_key_pressed(Key::F5, KeyRepeat::No) {
             let data = mmu.get_save_data();
             std::fs::write("rom.sav", data).expect("Failed to write save file");
@@ -83,7 +83,7 @@ fn main() {
         window.update_with_buffer(&fb, w * sc, h * sc).unwrap();
     }
 
-    // --- 🏛️ AUTO-SAVE ON EXIT ---
+    // AUTO-SAVE ON EXIT
     let data = mmu.get_save_data();
     let _ = std::fs::write("rom.sav", data);
     println!("Principal: Shutdown successful. Auto-save completed.");
