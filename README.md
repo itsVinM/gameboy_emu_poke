@@ -38,6 +38,8 @@ Load any `.gb` file with **LOAD ROM** (ROM not included — copyright).
 
 ## Tests
 
+Covers CPU opcodes, timer, PPU scanlines, interrupts, and a Pokémon Red boot integration test.
+
 ```bash
 cargo test && cargo test --test integration
 ```
