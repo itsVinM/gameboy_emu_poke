@@ -12,21 +12,11 @@ impl Cpu {
     }
 
     pub fn debug_print<B: MemoryBus>(&self, bus: &B) {
-        let pc = self.regs.pc;
-        let op = bus.read(pc);
-        let if_reg = bus.read(0xFF0F);
-        let ie_reg = bus.read(0xFFFF);
-        let joyp = bus.read(0xFF00);
-        let ly = bus.read(0xFF44);
-
-        println!("--- [PC: {:#06X} OP: {:#04X}] ---", pc, op);
+        println!("--- [PC: {:#06X} OP: {:#04X}] ---", self.regs.pc, bus.read(self.regs.pc));
         println!("REG | AF: {:#06X} BC: {:#06X} DE: {:#06X} HL: {:#06X}",
             self.regs.get_af(), self.regs.get_bc(), self.regs.get_de(), self.regs.get_hl());
-        println!("SYS | IF: {:#04X} IE: {:#04X} LY: {:#04X} JOYP: {:#04X}", if_reg, ie_reg, ly, joyp);
-        println!("---------------------------------");
-
-        use std::io::{self, Write};
-        io::stdout().flush().unwrap();
+        println!("SYS | IF: {:#04X} IE: {:#04X} LY: {:#04X} JOYP: {:#04X}",
+            bus.read(0xFF0F), bus.read(0xFFFF), bus.read(0xFF44), bus.read(0xFF00));
     }
 
     // --- Fetch ---
@@ -323,14 +313,11 @@ impl Cpu {
             0xF1 => { let v = self.pop16(bus); self.regs.set_af(v); 12 }
 
             // --- RST ---
-            0xC7 => { self.push16(bus, self.regs.pc); self.regs.pc = 0x00; 16 }
-            0xCF => { self.push16(bus, self.regs.pc); self.regs.pc = 0x08; 16 }
-            0xD7 => { self.push16(bus, self.regs.pc); self.regs.pc = 0x10; 16 }
-            0xDF => { self.push16(bus, self.regs.pc); self.regs.pc = 0x18; 16 }
-            0xE7 => { self.push16(bus, self.regs.pc); self.regs.pc = 0x20; 16 }
-            0xEF => { self.push16(bus, self.regs.pc); self.regs.pc = 0x28; 16 }
-            0xF7 => { self.push16(bus, self.regs.pc); self.regs.pc = 0x30; 16 }
-            0xFF => { self.push16(bus, self.regs.pc); self.regs.pc = 0x38; 16 }
+            0xC7 | 0xCF | 0xD7 | 0xDF | 0xE7 | 0xEF | 0xF7 | 0xFF => {
+                self.push16(bus, self.regs.pc);
+                self.regs.pc = (op & 0x38) as u16;
+                16
+            }
 
             // --- I/O ---
             0xE0 => { let a = 0xFF00 | self.fetch8(bus) as u16; bus.write(a, self.regs.a); 12 }

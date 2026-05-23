@@ -47,20 +47,11 @@ impl Mmu {
         mmu.io[0x47] = 0xFC; // BGP
         mmu
     }
-    // save data
-    pub fn get_save_data(&self) -> Vec<u8> {
-        self.extram.clone()
-    }
+    pub fn get_save_data(&self) -> Vec<u8> { self.extram.clone() }
 
-    // Loads save data into External RAM
     pub fn load_save_data(&mut self, data: Vec<u8>) {
-        let len = self.extram.len();
-        if data.len() >= len {
-            self.extram[..len].copy_from_slice(&data[..len]);
-        } else {
-            // partial load — copy what we have
-            self.extram[..data.len()].copy_from_slice(&data);
-        }
+        let n = data.len().min(self.extram.len());
+        self.extram[..n].copy_from_slice(&data[..n]);
     }
     pub fn read(&self, addr: u16) -> u8 {
         match addr {
