@@ -6,11 +6,16 @@ pub struct Cpu {
     pub halted: bool,
 }
 
+impl Default for Cpu {
+    fn default() -> Self { Self::new() }
+}
+
 impl Cpu {
     pub fn new() -> Self {
         Self { regs: Registers::new(), halted: false }
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn debug_print<B: MemoryBus>(&self, bus: &B) {
         println!("--- [PC: {:#06X} OP: {:#04X}] ---", self.regs.pc, bus.read(self.regs.pc));
         println!("REG | AF: {:#06X} BC: {:#06X} DE: {:#06X} HL: {:#06X}",
@@ -20,12 +25,14 @@ impl Cpu {
     }
 
     // --- Fetch ---
+    #[inline]
     fn fetch8<B: MemoryBus>(&mut self, bus: &B) -> u8 {
         let v = bus.read(self.regs.pc);
         self.regs.pc = self.regs.pc.wrapping_add(1);
         v
     }
 
+    #[inline]
     fn fetch16<B: MemoryBus>(&mut self, bus: &B) -> u16 {
         let lo = self.fetch8(bus) as u16;
         let hi = self.fetch8(bus) as u16;
@@ -33,6 +40,7 @@ impl Cpu {
     }
 
     // --- Stack ---
+    #[inline]
     pub fn push16<B: MemoryBus>(&mut self, bus: &mut B, val: u16) {
         self.regs.sp = self.regs.sp.wrapping_sub(1);
         bus.write(self.regs.sp, (val >> 8) as u8);
@@ -40,6 +48,7 @@ impl Cpu {
         bus.write(self.regs.sp, (val & 0xFF) as u8);
     }
 
+    #[inline]
     pub fn pop16<B: MemoryBus>(&mut self, bus: &mut B) -> u16 {
         let low = bus.read(self.regs.sp) as u16;
         self.regs.sp = self.regs.sp.wrapping_add(1);
@@ -49,6 +58,7 @@ impl Cpu {
     }
 
     // --- r8 helpers (B C D E H L (HL) A) ---
+    #[inline]
     fn read_r8<B: MemoryBus>(&self, idx: u8, bus: &B) -> u8 {
         match idx {
             0 => self.regs.b,
@@ -63,6 +73,7 @@ impl Cpu {
         }
     }
 
+    #[inline]
     fn write_r8<B: MemoryBus>(&mut self, idx: u8, val: u8, bus: &mut B) {
         match idx {
             0 => self.regs.b = val,
@@ -78,6 +89,7 @@ impl Cpu {
     }
 
     // --- Main step ---
+    #[must_use]
     pub fn step<B: MemoryBus>(&mut self, bus: &mut B) -> u32 {
         let triggered = bus.read(0xFF0F) & bus.read(0xFFFF) & 0x1F;
         if triggered != 0 {
